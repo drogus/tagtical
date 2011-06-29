@@ -3,7 +3,10 @@ class TagticalMigration < ActiveRecord::Migration
     create_table :tags do |t|
       t.string :value
       t.string :type
+      t.float :relevance
     end
+    add_index :tags, [:type, :value], :unique => true
+    add_index :tags, :value
 
     create_table :taggings do |t|
       t.references :tag
@@ -11,17 +14,18 @@ class TagticalMigration < ActiveRecord::Migration
       # You should make sure that the column created is
       # long enough to store the required class names.
       t.references :taggable, :polymorphic => true
-      if Tagtical.polymorphic_tagger
+      if Tagtical.config.polymorphic_tagger?
         t.references :tagger, :polymorphic => true
       else
         t.integer :tagger_id
       end
+
       t.datetime :created_at
     end
 
     add_index :taggings, :tag_id
-    add_index :taggings, [:taggable_id, :taggable_type, :context]
-    add_index :taggings, Tagtical.polymorphic_tagger ? [:tagger_id, :tagger_type] : :tagger_id
+    add_index :taggings, [:taggable_id, :taggable_type]
+    add_index :taggings,  Tagtical.config.polymorphic_tagger? ? [:tagger_id, :tagger_type] : [:tagger_id]
   end
 
   def self.down

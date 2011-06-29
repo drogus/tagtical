@@ -1,5 +1,20 @@
 require "active_record"
 require "action_view"
+require "active_support/hash_with_indifferent_access"
+
+module Tagtical
+
+  # Place a tagtical.yml file in the config directory to control settings
+  mattr_accessor :config
+  self.config = ActiveSupport::InheritableOptions.new(ActiveSupport::HashWithIndifferentAccess.new.tap do |hash|
+    require 'yaml'
+    path = Rails.root.join("config", "tagtical.yml") rescue ""
+    hash.update(YAML.load_file(path)) if File.exists?(path)
+    # If tagger association options were not provided, then use the polymorphic_tagger association.
+    hash[:polymorphic_tagger?] = !hash[:tagger]
+  end)
+  
+end
 
 $LOAD_PATH.unshift(File.dirname(__FILE__))
 
@@ -13,7 +28,7 @@ require "tagtical/taggable/ownership"
 require "tagtical/taggable/related"
 
 require "tagtical/acts_as_tagger"
-require "tagtical/tag/base"
+require "tagtical/tag"
 require "tagtical/tag_list"
 require "tagtical/tags_helper"
 require "tagtical/tagging"
@@ -27,15 +42,4 @@ end
 
 if defined?(ActionView::Base)
   ActionView::Base.send :include, Tagtical::TagsHelper
-end
-
-module Tagtical
-  extend self
-
-  # If set to false, then the tagger_id field must be mapped to only one AR model.
-  #
-  #
-  attr_accessor :polymorphic_tagger
-  self.polymorphic_tagger = false
-
 end

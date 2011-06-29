@@ -22,15 +22,19 @@ ActiveRecord::Base.silence do
       t.string   "context"
       t.datetime "created_at"
       t.integer  "tagger_id",     :limit => 11
-      t.string   "tagger_type"
+      t.string   "tagger_type" if Tagtical.config.polymorphic_tagger?
     end
 
     add_index "taggings", ["tag_id"], :name => "index_taggings_on_tag_id"
-    add_index "taggings", ["taggable_id", "taggable_type", "context"], :name => "index_taggings_on_taggable_id_and_taggable_type_and_context"
+    add_index "taggings", ["taggable_id", "taggable_type"], :name => "index_taggings_on_taggable_id_and_taggable_type"
 
-    create_table "tags", :force => true do |t|
-      t.string "value"
+    create_table :tags, :force => true do |t|
+      t.string :value
+      t.string :type
+      t.float  :relevance
     end
+    add_index :tags, [:type, :value], :unique => true
+    add_index :tags, :value
 
     create_table :taggable_models, :force => true do |t|
       t.column :name, :string
@@ -40,10 +44,7 @@ ActiveRecord::Base.silence do
   end
 
   class TaggableModel < ActiveRecord::Base
-    acts_as_taggable
-    tagtical :languages
-    tagtical :skills
-    tagtical :needs, :offerings
+    acts_as_taggable(:languages, :skills, :needs, :offerings)
   end
 end
 

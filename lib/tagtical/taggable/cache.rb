@@ -37,9 +37,9 @@ module Tagtical::Taggable
     
     module InstanceMethods      
       def save_cached_tag_list
-        tag_types.map(&:to_s).each do |tag_type|
+        tag_types.each do |tag_type|
           if self.class.send("caching_#{tag_type.singularize}_list?")
-            if tag_list_cache_set_on(tag_type)
+            if tag_list_cache_set_on?(tag_type)
               list = tag_list_cache_on(tag_type.singularize).to_a.flatten.compact.join(', ')
               self["cached_#{tag_type.singularize}_list"] = list
             end

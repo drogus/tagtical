@@ -4,29 +4,23 @@ module Tagtical
       false
     end
 
-    class Sticker
-
-      acts_as_taggable(:colors, :terms)
-    end
-
     ##
     # Make a model taggable on specified contexts.
     #
-    # @param [Array] tag_types An array of taggable contexts
+    # @param [Array] tag_types An array of taggable contexts. These must have an associated subclass under Tag.
     #
     # Example:
     #   module Tag
-    #     class Language < Tagtical::Tag::Term
+    #     class Language < Tagtical::Tag
     #     end
-    #     class Skill < Tagtical::Tag::Term
+    #     class Skill < Tagtical::Tag
     #     end
     #   end
     #   class User < ActiveRecord::Base
     #     acts_as_taggable :languages, :skills
     #   end
     def acts_as_taggable(*tag_types)
-      tag_types << :term if tag_types.empty?
-      tag_types = tag_types.to_a.flatten.compact.map(&:to_sym)
+      tag_types = Tagtical::Tag::Type[tag_types.flatten]
 
       if taggable?
         write_inheritable_attribute(:tag_types, (self.tag_types + tag_types).uniq)
