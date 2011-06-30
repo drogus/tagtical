@@ -5,7 +5,7 @@ describe @klass do
   before do
     clean_database!
     @klass = Tagtical::Tag
-    @tag = @klass.new(:value => "train", :relevance => 3.5)
+    @tag = @klass.new(:value => "train")
   end
 
   subject { @tag }
@@ -19,27 +19,33 @@ describe @klass do
     specify { @klass.sti_name == "tag" }
   end
 
-  describe "#before_create" do
-    context "when no relevance set" do
-      before do
-        @tag.relevance = nil
-        @tag.run_callbacks(:create)
-      end
-      its(:relevance) { should == @klass.default_relevance }
-    end
-    context "when relevance set" do
-      before { @tag.run_callbacks(:create) }
-      its(:relevance) { should == @tag.relevance }
-    end
-  end
-
-  its(:type) { should == "tag" }
+  its(:type) { should be_nil }
 
   describe ".find_sti_class" do
     specify do
-      {"inheriting" => Tag::Inheriting, "tag" => @klass}.each do |arg, result|
+      {"skill" => Tag::Skill, "tag" => @klass}.each do |arg, result|
         @klass.send(:find_sti_class, arg).should == result
       end
+    end
+  end
+
+  describe "sort" do
+    before do
+      @tag1 = @klass.new(:value => "car").tap { |x| x["relevance"] = "2.5" }
+      @tag2 = @klass.new(:value => "plane").tap { |x| x["relevance"] = "1.7" }
+      @tag3 = @klass.new(:value => "bike").tap { |x| x["relevance"] = "1.1" }
+      @tags = [@tag1, @tag2, @tag3]
+    end
+    it "should sort by relevance if all tags have them" do
+      @tags.sort.map(&:value).should == ["bike", "plane", "car"]
+    end
+    it "should fallback gracefully when relevance not provided" do
+      @tag3["relevance"] = nil
+      @tags.sort.map(&:value).should == ["bike", "plane", "car"]
+    end
+    it "should sort by value when no relevances provided" do
+      @tags.each { |t| t["relevance"] = nil }
+      @tags.sort.map(&:value).should == ["bike", "car", "plane"]
     end
   end
 
@@ -47,11 +53,6 @@ describe @klass do
     it { should == @tag }
     it { should_not == "tain" }
     it { should_not == @klass.new }
-  end
-
-  it  "should sort by relevance" do
-    @tags = [3.454, 2.3, 6, 3.2].map { |relevance| @klass.new(:relevance => relevance) }
-    @tags.sort.map(&:relevance).should == [2.3, 3.2, 3.454, 6.0]
   end
 
   describe "#find_or_create_tag_list" do
@@ -73,9 +74,14 @@ describe @klass do
       @klass.create!(:value => "epic")
     end
 
-    it "should find both tags" do
-      @klass.where_any_like(["awe", "epic"]).should have(2).items
+    it "should find both tags wildcard search" do
+      @klass.where_any_like(["awe", "epic"], :wildcard => true).should have(2).items
     end
+
+    it "should not be case sensitive" do
+      @klass.where_any_like(["AWESOME", "EpIc"]).should have(2).items
+    end
+  
   end
 
   describe ".find_or_create_with_like_by_value!" do
@@ -156,23 +162,15 @@ describe @klass do
     @klass.where_any('cool').should include(@tag)
   end
 
-  it "where_any_like" do
-    @tag.value = "cool"
-    @tag.save!
-    @another_tag = @klass.create!(:value => "coolip")
-    @klass.where_any_like('cool').should include(@tag, @another_tag)
-  end
-
   describe "Type" do
     before do
       @klass = @klass::Type
-      @type = @klass.new("inheriting")
+      @type = @klass.new("skill")
     end
     subject { @type }
 
-    its(:klass) { should == Tag::Inheriting }
-    its(:class_name) { should == "Inheriting" }
-    its(:scope_name) { should == "inheriting" }
+    its(:klass) { should == Tag::Skill }
+    its(:scope_name) { should == "skills" }
 
     describe "initialize" do
       it "converts string into correct format" do
@@ -188,26 +186,33 @@ describe @klass do
     end
 
     describe "#==" do
-      {"foo" => false, "inheriting" => true, Tagtical::Tag::Type.new("inheriting") => true}.each do |obj, result|
+      {"foo" => false, "skill" => true, Tagtical::Tag::Type.new("skill") => true}.each do |obj, result|
         specify { (subject==obj).should==result }
+      end
+    end
+
+    describe "#derive_class_candidates" do
+      specify do
+        subject.send(:derive_class_candidates).should include(
+          "Tagtical::Tag::Skill", "Tag::Skill", "Skill",
+            "Tagtical::Tag::SkillTag", "Tag::SkillTag", "SkillTag"
+        )
       end
     end
 
     describe "#tag_list_name" do
       context "when prefix is not specified" do
-        its(:tag_list_name) { should == "inheriting_list" }
+        its(:tag_list_name) { should == "skill_list" }
       end
       context "when prefix is specified" do
-        specify { subject.tag_list_name(:all).should == "all_inheriting_list" }
+        specify { subject.tag_list_name(:all).should == "all_skill_list" }
       end
     end
 
     context "when type is 'Tag'" do
       before { @type = @klass.new("tag") }
       its(:klass) { should == Tagtical::Tag }
-
-      its(:class_name) { should == "Tag" }
-      its(:scope_name) { should == "tag" }
+      its(:scope_name) { should == "tags" }
     end
 
   end

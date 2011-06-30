@@ -16,6 +16,7 @@ ActiveRecord::Base.silence do
   ActiveRecord::Migration.verbose = false
   ActiveRecord::Schema.define :version => 0 do
     create_table "taggings", :force => true do |t|
+      t.float    "relevance"
       t.integer  "tag_id",        :limit => 11
       t.integer  "taggable_id",   :limit => 11
       t.string   "taggable_type"
@@ -31,7 +32,6 @@ ActiveRecord::Base.silence do
     create_table :tags, :force => true do |t|
       t.string :value
       t.string :type
-      t.float  :relevance
     end
     add_index :tags, [:type, :value], :unique => true
     add_index :tags, :value

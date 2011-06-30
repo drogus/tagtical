@@ -1,10 +1,7 @@
 module Tagtical
   class Tag < ::ActiveRecord::Base
 
-    class_attribute :default_relevance, :instance_writer => false
-    self.default_relevance = 1
-
-    attr_accessible :value, :relevance
+    attr_accessible :value
 
     ### ASSOCIATIONS:
 
@@ -12,10 +9,8 @@ module Tagtical
 
     ### VALIDATIONS:
 
-    validates_presence_of :value, :type
+    validates_presence_of :value # type is not required, it can be blank
     validates_uniqueness_of :value, :scope => :type
-
-    before_create { |record| record.relevance ||= default_relevance }
 
     self.store_full_sti_class = false
 
@@ -23,15 +18,22 @@ module Tagtical
 
     class << self
 
-      def where_any(list, wildcard=false)
-        char = "%" if wildcard
-        operator = wildcard ? (connection.adapter_name=='PostgreSQL' ? 'ILIKE' : 'LIKE') : "="
+      def where_any(list, options={})
+        char = "%" if options[:wildcard]
+        operator = options[:case_insensitive] || options[:wildcard] ?
+          (using_postgresql? ? 'ILIKE' : 'LIKE') :
+          "="
         conditions = Array(list).map { |tag| ["value #{operator} ?", "#{char}#{tag.to_s}#{char}"] }
         where(conditions.size==1 ? conditions.first : conditions.map { |c| sanitize_sql(c) }.join(" OR "))
       end
 
-      def where_any_like(list)
-        where_any(list, true)
+      def using_postgresql?
+        connection.adapter_name=='PostgreSQL'
+      end
+
+      # Use this for case insensitive 
+      def where_any_like(list, options={})
+        where_any(list, options.update(:case_insensitive => true))
       end
 
       ### CLASS METHODS:
@@ -49,9 +51,9 @@ module Tagtical
         existing_tags = where_any_like(list).all
         new_tag_values = list.reject do |value|
           value = comparable_value(value)
-          existing_tags.any? { |tag|  comparable_value(tag.value) == value }
+          existing_tags.any? { |tag| comparable_value(tag.value) == value }
         end
-        created_tags  = new_tag_values.map { |value| Tag.create(:value => value) }
+        created_tags  = new_tag_values.map { |value| create!(:value => value) }
 
         existing_tags + created_tags
       end
@@ -84,16 +86,23 @@ module Tagtical
       super || (object.is_a?(self.class) && value == object.value)
     end
 
+    # Try to sort by the relevance if provided.
     def <=>(tag)
-      relevance <=> tag.relevance
+      if (r1 = self["relevance"]) && (r2 = tag["relevance"])
+        r1.to_f <=> r2.to_f
+      else
+        value <=> tag.value
+      end
     end
 
     def to_s
       value
     end
 
+    # We return nil if we are *not* an STI class.
     def type
-      Type[read_attribute(:type) || "tag"]
+      type = read_attribute(:type)
+      type && Type[type]
     end
 
     def count
@@ -102,19 +111,34 @@ module Tagtical
 
     class Type < String
 
+      # "tag" should always correspond with demodulize name of the base Tag class (ie Tagtical::Tag).
+      BASE = "tag".freeze
+
+      # Default to simply "tag", if none is provided. This will return Tagtical::Tag on calls to #klass
       def initialize(arg)
         super(arg.to_s.singularize.underscore.gsub(/_tag$/, ''))
       end
 
-      def self.[](input)
-        return input.map { |c| self[c] } if input.is_a?(Array)
-        input.is_a?(self) ? input : new(input)
+      class << self
+        def find(input)
+          return input.map { |c| self[c] } if input.is_a?(Array)
+          input.is_a?(self) ? input : new(input)
+        end
+        alias :[] :find
+
+        # Raises an error if the type is not valid.
+        def find!(input)
+          find(input).tap { |type| type.validate! if type }
+        end
+      end
+
+      def validate!
+        raise("Cannot find subclass of Tagtical::Tag for #{self}") if klass.nil?
       end
 
       # Return the Tag subclass
       def klass
-        longest_candidate = "Tagtical::Tag#{"::#{class_name}" unless class_name=="Tag"}"
-        candidates = [].tap { |arr| longest_candidate.scan(/^|::/) { arr << $' } }.reverse # Klass, Tag::Klass, Tagtical::Tag::Klass
+        candidates = derive_class_candidates
 
         # Attempt to find the preloaded class instead of having to do NameError catching below.
         candidates.each do |candidate|
@@ -135,10 +159,14 @@ module Tagtical
           rescue ArgumentError
           end
         end
+        nil
       end
 
-      alias :class_name :classify
-      alias :scope_name :to_s
+      alias :scope_name :pluralize
+
+      def base?
+        klass.descends_from_active_record?
+      end
 
       def ==(val)
         super(self.class[val])
@@ -152,6 +180,31 @@ module Tagtical
 
       def tag_list_ivar(*args)
         "@#{tag_list_name(*args)}"
+      end
+
+      # Returns the level from which it extends from Tagtical::Tag
+      def active_record_sti_level
+        @active_record_sti_level ||= begin
+          count, current_class = 0, klass
+          while !current_class.descends_from_active_record?
+            current_class = current_class.superclass
+            count += 1
+          end
+          count
+        end
+      end
+
+      private
+
+      # Returns an array of potential class names for this specific type.
+      def derive_class_candidates
+        [].tap do |arr|
+          [classify, "#{classify}Tag"].each do |name| # support Interest and InterestTag class names.
+            "Tagtical::Tag".tap do |longest_candidate|
+              longest_candidate << "::#{name}" unless name=="Tag"
+            end.scan(/^|::/) { arr << $' } # Klass, Tag::Klass, Tagtical::Tag::Klass
+          end
+        end
       end
 
     end

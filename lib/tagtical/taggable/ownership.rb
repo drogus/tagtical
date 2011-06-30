@@ -4,9 +4,7 @@ module Tagtical::Taggable
       base.send :include, Tagtical::Taggable::Ownership::InstanceMethods
       base.extend Tagtical::Taggable::Ownership::ClassMethods
      
-      base.class_eval do
-        after_save :save_owned_tags    
-      end
+      base.after_save :save_owned_tags 
       
       base.initialize_acts_as_taggable_ownership
     end
@@ -30,13 +28,12 @@ module Tagtical::Taggable
 
     module InstanceMethods
       def owner_tags_on(owner, context)
-        conditions = [[%{#{Tagtical::Tag.table_name}.type = ?}, tag_type(context)]]
+        scope = send(tag_type(context).scope_name)
         if owner
-          conditions << [%{#{Tagtical::Tagging.table_name}.tagger_id = ?}, owner.id]
-          conditions << [%{#{Tagtical::Tagging.table_name}.tagger_type = ?}, owner.class.to_s] if Tagtical.config.polymorphic_tagger?
+          scope = scope.where([%{#{Tagtical::Tagging.table_name}.tagger_id = ?}, owner.id])
+          scope = scope.where([%{#{Tagtical::Tagging.table_name}.tagger_type = ?}, owner.class.to_s]) if Tagtical.config.polymorphic_tagger?
         end
-        joins = joins("JOIN #{Tagtical::Tag.table_name} ON #{Tagtical::Tagging.table_name}.tag_id = #{Tagtical::Tag.table_name}.id")
-        joins.where(conditions.map { |c| sanitize_sql(c) }.join(" AND ")).all
+        scope.all
       end
 
       def cached_owned_tag_list_on(context)
@@ -75,22 +72,30 @@ module Tagtical::Taggable
             owned_tags = owner_tags_on(owner, tag_type)
             old_tags   = owned_tags - tag_list
             new_tags   = tag_list   - owned_tags
+ 
           
             # Find all taggings that belong to the taggable (self), are owned by the owner, 
             # have the correct context, and are removed from the list.
-            conditions = {:taggable_id => id, :taggable_type => self.class.base_class.to_s,
-              :tagger_id => owner.id,  :tag_id => old_tags}
-            conditions.update(:tagger_type => owner.class.to_s) if Tagtical.config.polymorphic_tagger?
+            conditions = {:taggable_id => id, :taggable_type => self.class.base_class.to_s, :tag_id => old_tags}
+            if Tagtical.config.support_multiple_taggers?
+              conditions.update(:tagger_id => owner.id)
+              conditions.update(:tagger_type => owner.class.to_s) if Tagtical.config.polymorphic_tagger?
+            end
             old_taggings = Tagtical::Tagging.where(conditions).all
-          
+
             if old_taggings.present?
+             # puts old_taggings.map(&:id).inspect
               # Destroy old taggings:
               Tagtical::Tagging.destroy_all(:id => old_taggings.map(&:id))
             end
 
             # Create new taggings:
             new_tags.each do |tag|
-              taggings.create!(:tag_id => tag.id, :tagger => owner, :taggable => self)
+              if !Tagtical.config.support_multiple_taggers? && (current_tag = taggings.find_by_tag_id(tag.id))
+                current_tag.update_attributes!(:tagger => owner) # overwrite the tagger if there is one.
+              else
+                taggings.create!(:tag_id => tag.id, :tagger => owner)
+              end
             end
           end
         end

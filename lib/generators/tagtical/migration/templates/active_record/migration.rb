@@ -3,12 +3,12 @@ class TagticalMigration < ActiveRecord::Migration
     create_table :tags do |t|
       t.string :value
       t.string :type
-      t.float :relevance
     end
     add_index :tags, [:type, :value], :unique => true
     add_index :tags, :value
 
     create_table :taggings do |t|
+      t.float :relevance
       t.references :tag
 
       # You should make sure that the column created is

@@ -3,16 +3,36 @@ require File.expand_path('../../spec_helper', __FILE__)
 describe Tagtical::Tagging do
   before(:each) do
     clean_database!
-    @tagging = Tagtical::Tagging.new
+    @klass = Tagtical::Tagging
+    @tagging = @klass.new
+  end
+  subject { @tagging }
+
+  describe "#before_create" do
+    context "when no relevance set" do
+      before do
+        @tagging.relevance = nil
+        @tagging.run_callbacks(:create)
+      end
+      its(:relevance) { should == @klass.default_relevance }
+    end
+    context "when relevance set" do
+      before { @tagging.run_callbacks(:create) }
+      its(:relevance) { should == @tagging.relevance }
+    end
+  end
+
+  it "should sort by relevance" do
+    @taggings = [3.454, 2.3, 6, 3.2].map { |relevance| @klass.new(:relevance => relevance) }
+    @taggings.sort.map(&:relevance).should == [2.3, 3.2, 3.454, 6.0]
   end
 
   it "should not be valid with a invalid tag" do
     @tagging.taggable = TaggableModel.create(:name => "Bob Jones")
-    @tagging.tag = Tagtical::Tag.new(:value => "")
-    @tagging.context = "tags"
+    @tagging.tag = Tagtical::Tag.new(:value => "") 
 
     @tagging.should_not be_valid
-    
+
     if ActiveRecord::VERSION::MAJOR >= 3
       @tagging.errors[:tag_id].should == ["can't be blank"]
     else
@@ -25,7 +45,8 @@ describe Tagtical::Tagging do
     @tag = Tagtical::Tag.create(:value => "awesome")
 
     lambda {
-      2.times { Tagtical::Tagging.create(:taggable => @taggable, :tag => @tag, :context => 'tags') }
-    }.should change(Tagtical::Tagging, :count).by(1)
+      2.times { @klass.create(:taggable => @taggable, :tag => @tag, :context => 'tags') }
+    }.should change(@klass, :count).by(1)
   end
+  
 end

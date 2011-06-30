@@ -15,7 +15,8 @@ module Tagtical
       #   end
       def acts_as_tagger(opts={})
         class_eval do
-          has_many :owned_taggings, opts.merge(:as => :tagger, :dependent => :destroy,
+          opts.update(:as => :tagger) if Tagtical.config.polymorphic_tagger?
+          has_many :owned_taggings, opts.merge(:dependent => :destroy,
                                                :include => :tag, :class_name => "Tagtical::Tagging")
           has_many :owned_tags, :through => :owned_taggings, :source => :tag, :uniq => true, :class_name => "Tagtical::Tag"
         end

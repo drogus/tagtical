@@ -8,7 +8,7 @@ module Tagtical::Taggable
     
     module ClassMethods
       def initialize_tagtical_collection
-        tag_types.map(&:to_s).each do |tag_type|
+        tag_types.each do |tag_type|
           class_eval %(
             def self.#{tag_type.singularize}_counts(options={})
               tag_counts_on('#{tag_type}', options)
@@ -49,7 +49,7 @@ module Tagtical::Taggable
       #                       * :order      - A piece of SQL to order by. Eg 'tags.count desc' or 'taggings.created_at desc'
       #                       * :at_least   - Exclude tags with a frequency less than the given value
       #                       * :at_most    - Exclude tags with a frequency greater than the given value
-      #                       * :on         - Scope the find to only include a certain context
+      #                       * :on         - Scope the find to only include a certain tag type
       def all_tag_counts(options = {})
         options.assert_valid_keys :start_at, :end_at, :conditions, :at_least, :at_most, :order, :limit, :on, :id
 
@@ -62,22 +62,26 @@ module Tagtical::Taggable
         ## Generate conditions:
         options[:conditions] = sanitize_sql(options[:conditions]) if options[:conditions]     
 
-        start_at_conditions = sanitize_sql(["#{Tagtical::Tagging.table_name}.created_at >= ?", options.delete(:start_at)]) if options[:start_at]
-        end_at_conditions   = sanitize_sql(["#{Tagtical::Tagging.table_name}.created_at <= ?", options.delete(:end_at)])   if options[:end_at]
+        start_at_conditions  = sanitize_sql(["#{Tagtical::Tagging.table_name}.created_at >= ?", options.delete(:start_at)])  if options[:start_at]
+        end_at_conditions    = sanitize_sql(["#{Tagtical::Tagging.table_name}.created_at <= ?", options.delete(:end_at)])    if options[:end_at]
         
         taggable_conditions  = sanitize_sql(["#{Tagtical::Tagging.table_name}.taggable_type = ?", base_class.name])
-        taggable_conditions << sanitize_sql([" AND #{Tagtical::Tagging.table_name}.taggable_id = ?", options.delete(:id)])  if options[:id]
-        taggable_conditions << sanitize_sql([" AND #{Tagtical::Tagging.table_name}.context = ?", options.delete(:on).to_s]) if options[:on]
-        
+        taggable_conditions  << sanitize_sql([" AND #{Tagtical::Tagging.table_name}.taggable_id = ?", options.delete(:id)])  if options[:id]
+
+        sti_conditions = if options[:on] && (klass = Tagtical::Tag::Type[options[:on]].klass).finder_needs_type_condition?
+          klass.send(:type_condition)
+        end
+
         tagging_conditions = [
           taggable_conditions,
           scope[:conditions],
           start_at_conditions,
           end_at_conditions
         ].compact.reverse
-        
+
         tag_conditions = [
-          options[:conditions]        
+          options[:conditions],
+          sti_conditions
         ].compact.reverse
         
         ## Generate joins:

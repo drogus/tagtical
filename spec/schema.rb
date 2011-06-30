@@ -5,7 +5,8 @@ ActiveRecord::Schema.define :version => 0 do
     t.string   "taggable_type"
     t.datetime "created_at"
     t.column :tagger_id, :integer
-    t.column :tagger_type, :string 
+    t.column :tagger_type, :string
+    t.column :relevance, :float
   end
 
   add_index :taggings, :tag_id
@@ -14,7 +15,6 @@ ActiveRecord::Schema.define :version => 0 do
   create_table :tags, :force => true do |t|
     t.column :value, :string
     t.column :type, :string
-    t.column :relevance, :float
   end
   add_index :tags, [:type, :value], :unique => true
   add_index :tags, :value

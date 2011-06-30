@@ -3,26 +3,30 @@
 This plugin was originally based on acts_as_taggable_on by Michael Bleigh. That plugin
 was based on acts_as_taggable_on_steroids by Jonathan Viney.
 
-While a lot concepts are the same (taggings + tags tables using polymorphism), this adaption
-creates subclasses on Tag which allows for users to build out Tag functionality as you wish.
+While a lot concepts are the same (taggings + tags tables using polymorphism), this adaption introduces
+the concept of "relevance" for a tag and allows for the creation of subclasses on Tag.
 
-For instance, if you want to tag a photo with "Color Tags". You would simply subclass Tag with
-Tag::Color and you could add functionality specific to that model. This involves moving the "context"
+For instance, if you want to tag a photo with "Mood Tags". You would simply subclass Tag with
+Tag::Mood and you could add functionality specific to that model. This involves moving the "context"
 off of Tagging and moving it onto Tag as a "type" column. It acts not only as a "context", but also
-as a designator for the STI class.
+as a designator for the STI class. Subsequently, you could also add a "relevance" for how applicable
+that mood is.
 
 Tagtical allows for an arbitrary number of Tag subclasses, each of which can be extended to the needs
 of the application.
 
 Here are the main differences between tagtical and acts_as_taggable_on:
 
-1. Tagtical removes "context" off the taggings table and adds "type" onto the tags table.
-2. custom_contexts (on the fly) contexts are removed since every tag type must map to a defined class.
-3. The traditional functionality of tags is preserved while laying the foundation for STI on the Tag
+1. Add "relevance" to the Tag class so you can weight the tags to the object
+2. Tagtical removes "context" off the taggings table and adds "type" onto the tags table.
+3. custom_contexts (on the fly) contexts are removed since every tag type must map to a defined class.
+4. The traditional functionality of tags is preserved while laying the foundation for STI on the Tag
 class. You can choose to extend the Tag class with things that may not be interpreted as language (ie color hex codes or geo locations).
-4. Tag "names" now become tag "values". The difference is small, but significant. If you had
+5. Tag "names" now become tag "values". The difference is small, but significant. If you had
 GeoTag's, for example, you wouldn't refer to its "name", you would refer to its "value". The value
 could be a serialized field of long and lat if you wanted.
+6. Add ability to not have multiple taggers for a given tag. In other words, you can specify in a
+config file whether a taggable model can have the same tags from multiple different taggers.
 
 Additions include:
 1. Scopes are created on Tag so you can do photo.tags.color and grab all the tags of type Tag::Color
