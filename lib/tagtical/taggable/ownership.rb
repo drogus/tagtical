@@ -80,7 +80,7 @@ module Tagtical::Taggable
             if old_tags.present? && (old_taggings = owner_taggings.find_all_by_tag_id(old_tags)).present?
               old_taggings.reject! do |tagging|
                 if tagging.tag.class > tag_type.klass! # parent of current tag type/class, make sure not to remove these taggings.
-                  update_tagging_with_inherited_tag!(tagging, new_tags)
+                  update_tagging_with_inherited_tag!(tagging, new_tags, tag_value_lookup)
                   true
                 end
               end

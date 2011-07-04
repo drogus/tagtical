@@ -1,6 +1,6 @@
 = Tagtical
 
-This plugin was originally based on acts_as_taggable_on by Michael Bleigh. That plugin
+This plugin was originally based on acts_as_taggable_on by Michael Bleigh (http://mbleigh.com/). That plugin
 was based on acts_as_taggable_on_steroids by Jonathan Viney.
 
 While a lot concepts are the same (taggings + tags tables using polymorphism), this adaption introduces
@@ -13,43 +13,41 @@ as a designator for the STI class. Subsequently, you could also add a "relevance
 that mood is.
 
 Tagtical allows for an arbitrary number of Tag subclasses, each of which can be extended to the needs
-of the application.
+of the application. However, a tag subclass is not required! If you have many custom tag types that you
+create on the fly, you can wait until a later time to create a tag subclass.
 
 Here are the main differences between tagtical and acts_as_taggable_on:
 
-1. Add "relevance" to the Tag class so you can weight the tags to the object
+1. Add "relevance" to the Tagging class so you can weight the tags to the object.
 2. Tagtical removes "context" off the taggings table and adds "type" onto the tags table.
-3. custom_contexts (on the fly) contexts are removed since every tag type must map to a defined class.
-4. The traditional functionality of tags is preserved while laying the foundation for STI on the Tag
-class. You can choose to extend the Tag class with things that may not be interpreted as language (ie color hex codes or geo locations).
-5. Tag "names" now become tag "values". The difference is small, but significant. If you had
+3. The traditional functionality of tags is preserved while laying the foundation for STI on the Tag class.
+You can choose to extend the Tag class at a later time.
+4. Tag "name" now becomes tag "value". The difference is small, but significant. If you had
 GeoTag's, for example, you wouldn't refer to its "name", you would refer to its "value". The value
 could be a serialized field of long and lat if you wanted.
-6. Add ability to not have multiple taggers for a given tag. In other words, you can specify in a
+5. Add ability to not have multiple taggers for a given tag. In other words, you can specify in a
 config file whether a taggable model can have the same tags from multiple different taggers.
+6. Support a config/tagtical.yml to further configure the application. For example, since most people
+usually have one User class for their application, there is no reason to do polymorphic on "tagger",
+so I give the user the option to specify the class_name specifically for tagger.
 
 Additions include:
-1. Scopes are created on Tag so you can do photo.tags.color and grab all the tags of type Tag::Color
+1. Scopes are created on Tag so you can do photo.tags.color and grab all the tags of type Tag::Color, for example.
 
 == Installation
 
-=== Rails 2.3.x
+=== Rails & Ruby Versions
 
-Tagtical is tested to work in Rails 2.3.5.
+Tagtical is not tested to work with Rails < 3.05 and Ruby < 1.9.2
+
+It can probably work with older versions with very little work.
 
 ==== Plugin
 
 Tagtical is available both as a gem and as a traditional plugin. For the
 traditional plugin you can install like so:
 
-  script/plugin install git://github.com/mbleigh/tagtical.git
-
-Tagtical is also available as a gem plugin using Rails 2.1's gem dependencies.
-To install the gem, add this to your config/environment.rb:
-  
-  config.gem "tagtical", :source => "http://gemcutter.org", :version => '2.0.0.rc1'
-  
-After that, you can run "rake gems:install" to install the gem if you don't already have it.
+  script/plugin install git://github.com/Mixbook/tagtical.git
 
 ==== Post Installation
 
@@ -57,10 +55,6 @@ After that, you can run "rake gems:install" to install the gem if you don't alre
 2. rake db:migrate
 
 === Rails 3.0
-
-Tagtical is now useable in Rails 3.0, thanks to the excellent work of Szymon Nowak
-and Jelle Vandebeeck.
-
 To use it, add it to your Gemfile:
   
   gem 'tagtical'
@@ -77,7 +71,8 @@ directory, you can run the specs for RoR 3.0.0 with:
 
   rake spec
 
-If you want to test the plugin for Rails 2.3.x, use:
+Rails 2.3 is not supported, however I left the stub code from acts_as_taggable_on in there in case
+someone wants to try to get it working:
 
   rake rails2.3:spec
 
@@ -90,22 +85,40 @@ rake spec:plugins
 
     class User < ActiveRecord::Base
       # Alias for <tt>tagtical :tags</tt>:
-      acts_as_taggable
-      tagtical :skills, :interests
+      tagtical :activities, :interests, :sports # top level :tags is already included.
+    end
+    module Tag
+      class Activity < Tagtical::Tag
+      end
+      class Sport < Activity
+        def ball?
+          value=~/ball$//i
+        end
+      end
     end
 
     @user = User.new(:name => "Bobby")
-    @user.tag_list = "awesome, slick, hefty"      # this should be familiar
-    @user.skill_list = "joking, clowning, boxing" # but you can do it for any context!
-    @user.skill_list                              # => ["joking","clowning","boxing"] as TagList
+    @user.tag_list = "awesome, slick, hefty" # this should be familiar
+    @user.activity_list = "joking, clowning, boxing" # but you can do it for any context!
+    @user.activity_list                      # => ["joking","clowning","boxing"] as TagList
     @user.save
 
     @user.tags # => [<Tag value:"awesome">,<Tag value:"slick">,<Tag value:"hefty">]
-    @user.skills # => [<Tag value:"joking">,<Tag value:"clowning">,<Tag value:"boxing">]
+    @user.activities # => [<Tag::Activity value:"joking">,<Tag::Activity value:"clowning">,<Tag::Activity value:"boxing">]
+    @user.activities.first.athletic? # => false
 
-    @frankie = User.create(:name => "Frankie", :skill_list => "joking, flying, eating")
-    User.skill_counts # => [<Tag value="joking" count=2>,<Tag value="clowning" count=1>...]
-    @frankie.skill_counts
+    @frankie = User.create(:name => "Frankie", :activity_list => "joking, flying, eating")
+    User.activity_counts # => [<Tag::Activity value="joking" count=2>,<Tag::Activity value="clowning" count=1>...]
+    @frankie.activity_counts
+
+    @user.sport_list = {"boxing" => 4.5  # Since Sport's parent is Activity, it will move "boxing" down
+                                         # from Activity to Sport and give it a relevance of 4.5.
+    @user.save
+
+    @user.activities # => [<Tag::Activity value:"joking">,<Tag::Activity value:"clowning">,<Tag::Sport value:"boxing">]
+    @user.activities.first.athletic? # => false
+    @user.sports.all(&:ball?) # => true
+
 
 === Finding Tagged Objects
 
@@ -134,17 +147,17 @@ Also, objects will be returned in descending order based on the total number of
 matched tags.
 
     @bobby = User.find_by_name("Bobby")
-    @bobby.skill_list # => ["jogging", "diving"]
+    @bobby.activity_list # => ["jogging", "diving"]
 
     @frankie = User.find_by_name("Frankie")
-    @frankie.skill_list # => ["hacking"]
+    @frankie.activity_list # => ["hacking"]
 
     @tom = User.find_by_name("Tom")
-    @tom.skill_list # => ["hacking", "jogging", "diving"]
+    @tom.activity_list # => ["hacking", "jogging", "diving"]
 
-    @tom.find_related_skills # => [<User name="Bobby">,<User name="Frankie">]
-    @bobby.find_related_skills # => [<User name="Tom">] 
-    @frankie.find_related_skills # => [<User name="Tom">] 
+    @tom.find_related_activities # => [<User name="Bobby">,<User name="Frankie">]
+    @bobby.find_related_activities # => [<User name="Tom">] 
+    @frankie.find_related_activities # => [<User name="Tom">] 
 
 === Dynamic Tag Contexts
 
@@ -218,15 +231,19 @@ CSS:
 
 == Contributors
 
+* Aryk Grosz - Original Author
+
+== Contributors (from the acts_as_taggable_on project)
+
 * TomEric (i76) - Maintainer
-* Michael Bleigh - Original Author
+* Michael Bleigh - Original Author of acts_as_taggable_on
 * Szymon Nowak - Rails 3.0 compatibility
 * Jelle Vandebeeck - Rails 3.0 compatibility
 * Brendan Lim - Related Objects
 * Pradeep Elankumaran - Taggers
 * Sinclair Bain - Patch King
 
-=== Patch Contributors
+=== Patch Contributors (from the acts_as_taggable_on project)
 
 * tristanzdunn - Related objects of other classes
 * azabaj - Fixed migrate down
@@ -236,4 +253,4 @@ CSS:
 * lawrencepit - cached tag work
 * sobrinho - fixed tag_cloud helper
 
-Copyright (c) 2007-2010 Michael Bleigh (http://mbleigh.com/) and Intridea Inc. (http://intridea.com/), released under the MIT license
+Copyright (c) 2011 Aryk Grosz (http://mixbook.com/) released under the MIT license

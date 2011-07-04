@@ -244,11 +244,17 @@ module Tagtical::Taggable
           old_tags     = current_tags - tags
           new_tags     = tags         - current_tags
 
+          # If relevances are specified on current tags, make sure to update those 
+          tags_requiring_relevance_update = tag_value_lookup.map { |tag, value| tag if !value.relevance.nil? }.compact & current_tags
+          if tags_requiring_relevance_update.present? && (update_taggings = taggings.find_all_by_tag_id(tags_requiring_relevance_update)).present?
+            update_taggings.each { |tagging| tagging.update_attribute(:relevance, tag_value_lookup[tagging.tag].relevance) }
+          end
+
           # Find and remove old taggings:
           if old_tags.present? && (old_taggings = taggings.find_all_by_tag_id(old_tags)).present?
             old_taggings.reject! do |tagging|
               if tagging.tag.class > tag_type.klass! # parent of current tag type/class, make sure not to remove these taggings.
-                update_tagging_with_inherited_tag!(tagging, new_tags)
+                update_tagging_with_inherited_tag!(tagging, new_tags, tag_value_lookup)
                 true
               end
             end
@@ -278,9 +284,9 @@ module Tagtical::Taggable
 
       # Lets say tag class A inherits from B and B has a tag with value "foo". If we tag A with value "foo",
       # we want B to have only one instance of "foo" and that tag should be an instance of A (a subclass of B).
-      def update_tagging_with_inherited_tag!(tagging, tags)
+      def update_tagging_with_inherited_tag!(tagging, tags, tag_value_lookup)
         if tags.present? && (tag = Tagtical::Tag.send(:detect_comparable, tags, tagging.tag.value))
-          tagging.update_attribute(:tag, tag)
+          tagging.update_attributes!(:tag => tag, :relevance => tag_value_lookup[tag].relevance)
           tags.delete(tag)
         end
       end

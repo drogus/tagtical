@@ -58,3 +58,93 @@ def clean_database!
 end
 
 clean_database!
+
+
+module QueryAnalyzer
+  extend self
+  attr_accessor :enabled, :options
+  self.enabled = false
+  self.options = {}
+
+  IGNORE_SQL_REGEXP = /^explain/i # ignore SQL explain
+
+  def start(options=nil)
+    options = {:match => options} if options.is_a?(Regexp)
+    if block_given?
+      begin
+        (old_options, @options = @options, options) if options
+        old_enabled, @enabled = @enabled, true
+        yield
+      ensure
+        @enabled = old_enabled
+        @options = old_options if options
+      end
+    else
+      @options = options if options
+      @enabled = true
+    end
+  end
+
+  # Always disable it in production environment
+  def enabled?(sql=nil)
+    !Rails.env.production? && (@enabled && (!sql || match_sql?(sql)))
+  end
+
+  def match_sql?(sql)
+    sql !~ IGNORE_SQL_REGEXP && (!options[:match] || options[:match]===sql)
+  end
+
+  def stop
+    options.clear
+    @enabled = false
+  end
+
+  #  class Results < Array
+  #
+  #    def qa_columnized
+  #      sized = {}
+  #      self.each do |row|
+  #        row.values.each_with_index do |value, i|
+  #          sized[i] = [sized[i].to_i, row.keys[i].length, value.to_s.length].max
+  #        end
+  #      end
+  #
+  #      table = []
+  #      table << qa_columnized_row(self.first.keys, sized)
+  #      table << '-' * table.first.length
+  #      self.each { |row| table << qa_columnized_row(row.values, sized) }
+  #      table.join("\n   ") # Spaces added to work with format_log_entry
+  #    end
+  #
+  #    private
+  #
+  #    def qa_columnized_row(fields, sized)
+  #      row = []
+  #      fields.each_with_index do |f, i|
+  #        row << sprintf("%0-#{sized[i]}s", f.to_s)
+  #      end
+  #      row.join(' | ')
+  #    end
+  #
+  #  end # Results
+end
+
+module ActiveRecord
+  module ConnectionAdapters
+    class SQLiteAdapter < AbstractAdapter
+      private
+
+      def execute_with_analyzer(sql, name = nil)
+        if QueryAnalyzer.enabled?(sql)
+          display = "\nQUERY ANALYZER: \n#{sql}"
+          puts [display, nil, caller.map { |str| str.insert(0, "   -> ")}]
+          @logger.debug(display) if @logger && @logger.debug?
+        end
+        execute_without_analyzer(sql, name)
+      end
+      # Always disable this in production
+      alias_method_chain :execute, :analyzer unless Rails.env.production?
+
+    end
+  end
+end

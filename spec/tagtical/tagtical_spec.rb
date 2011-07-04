@@ -239,12 +239,34 @@ describe Tagtical do
 
   describe "Tagging With Relevance" do
     before do
-      @taggable_model = TaggableModel.create!(:name => "Taggable", :tag_list => {"random" => 0.45, "tags" => 1.54}, :skill_list => "tennis")
+      @taggable_model = TaggableModel.create!(:name => "Taggable", :tag_list => {"random" => 0.45, "tags" => 1.54}, :skill_list => "tennis, pottery")
     end
 
     it "should have tags with relevance" do
-      @taggable_model.tags.sort.map(&:relevance).should == [0.45, Tagtical::Tagging.default_relevance, 1.54]
+      @taggable_model.tags.sort.map(&:relevance).should == [0.45, Tagtical::Tagging.default_relevance, Tagtical::Tagging.default_relevance, 1.54]
     end
+
+    it "should have skills with relevance" do
+      @taggable_model.skills.first.relevance.should == Tagtical::Tagging.default_relevance
+    end
+
+    it "should overwrite relevance" do
+      @taggable_model.tag_list = {"tennis" => 6.0}
+      @taggable_model.save!
+      @taggable_model.reload
+      @taggable_model.skills.find_by_value("tennis").relevance.should == 6.0
+    end
+
+    it "should be able to change the tag type and update the relevance" do
+      @taggable_model.craft_list = {"pottery" => 4.56}
+      @taggable_model.save!
+      @taggable_model.reload
+      skills = @taggable_model.skills.find_all_by_value("pottery")
+      skills.should have(1).items
+      skills.first.relevance.should == 4.56
+      skills.first.should be_an_instance_of Tag::Craft
+    end
+
   end
 
   describe 'Caching' do
