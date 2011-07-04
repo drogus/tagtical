@@ -92,7 +92,7 @@ rake spec:plugins
       end
       class Sport < Activity
         def ball?
-          value=~/ball$//i
+          value=~/ball$/i
         end
       end
     end
@@ -119,6 +119,39 @@ rake spec:plugins
     @user.activities.first.athletic? # => false
     @user.sports.all(&:ball?) # => true
 
+--- Defining Subclasses
+
+There is a lot of flexibility when it comes to naming subclasses. Lets say the type column had a value
+of "color". You could define the subclass any of these ways:
+
+    module Tagtical
+      module Tag
+        class Color < Tagtical::Tag
+        end
+      end
+    end
+    module Tag
+      class Color < Tagtical::Tag
+      end
+    end
+    class Color < Tagtical::Tag
+    end
+    module Tagtical
+      module Tag
+        class ColorTag < Tagtical::Tag
+        end
+      end
+    end
+    module Tag
+      class ColorTag < Tagtical::Tag
+      end
+    end
+    class ColorTag < Tagtical::Tag
+    end
+
+This allows for a wide range of folder structures. You could make a directory called "tag" in your
+"app/models" directory and put all these subclasses in there, or you can put it straight in your
+"app/models" directory as "color.rb" or "color_tag.rb".
 
 === Finding Tagged Objects
 
