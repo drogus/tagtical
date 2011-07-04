@@ -29,7 +29,7 @@ module Tagtical::Taggable
         end        
       end
       
-      def tagtical(*args)
+      def acts_as_taggable(*args)
         super(*args)
         initialize_tagtical_collection
       end
@@ -68,9 +68,7 @@ module Tagtical::Taggable
         taggable_conditions  = sanitize_sql(["#{Tagtical::Tagging.table_name}.taggable_type = ?", base_class.name])
         taggable_conditions  << sanitize_sql([" AND #{Tagtical::Tagging.table_name}.taggable_id = ?", options.delete(:id)])  if options[:id]
 
-        sti_conditions = if options[:on] && (klass = Tagtical::Tag::Type[options[:on]].klass).finder_needs_type_condition?
-          klass.send(:type_condition)
-        end
+        sti_conditions = Tagtical::Tag::Type[options[:on]].finder_type_condition if options[:on]
 
         tagging_conditions = [
           taggable_conditions,

@@ -14,31 +14,20 @@ module Tagtical::Taggable
     module ClassMethods
       def initialize_tagtical_core
         has_many :taggings, :as => :taggable, :dependent => :destroy, :include => :tag, :class_name => "Tagtical::Tagging"
-        # has_many :tags, :through => :taggings, :source => :tag, :class_name => "Tagtical::Tag"
 
-        tag_types.each do |tag_type|
-          conditions = %{"#{Tagtical::Tag.table_name}"."id" = "#{Tagtical::Tagging.table_name}"."tag_id"}
-          conditions << " AND #{tag_type.klass.send(:type_condition).to_sql}" if tag_type.klass.finder_needs_type_condition?
+        tag_types.each do |tag_type| # has_many :tags gets created here
+          
+           # It's important to define both the a has_many association (ie has_many :skills) and also
+           # the scope as well so we flexibility in its usage (ie taggable.tags.skills). We could use
+           # delegate, but then we lose the AssociationCollection methods (ie <<, create, etc)
 
-          has_many tag_type.pluralize.to_sym, :through => :taggings, :source => :tag,
-            :class_name => "Tagtical::Tag", :conditions => conditions
-
-
-
-          #  context_taggings = "#{tag_type}_taggings".to_sym
-            # context_tags     = tag_type.to_sym
-          #
-          #  class_eval do
-          #    has_many context_taggings, :as => :taggable, :dependent => :destroy, :include => :tag, :class_name => "Tagtical::Tagging",
-          #    :conditions => ["#{Tagtical::Tagging.table_name}.tag_id = #{Tagtical::Tag.table_name}.id AND #{Tagtical::Tagging.table_name}.context = ?", tags_type]
-            #  puts tag_type.scope_name
-
-          #  end
+          has_many tag_type.has_many_name, :through => :taggings, :source => :tag, :class_name => "Tagtical::Tag",
+                   :select     => "#{Tagtical::Tag.table_name}.*, #{Tagtical::Tagging.table_name}.relevance", # include the relevance on the tags
+                   :conditions => %{"#{Tagtical::Tag.table_name}"."id" = "#{Tagtical::Tagging.table_name}"."tag_id"#{tag_type.finder_type_condition(:sql => :append)}}
 
           # In the case of the base tag type, it will just use the :tags association defined above.
           unless tag_type.base?
-            Tagtical::Tag.scope(tag_type.scope_name, tag_type.klass.unscoped)  # looks confusing but checkout ActiveRecord::Base#unscoped
-           # delegate tag_type.scope_name, :to => :tags
+            Tagtical::Tag.scope(tag_type.scope_name, tag_type.scoped)
           end
 
           class_eval <<-RUBY, __FILE__, __LINE__ + 1
@@ -54,8 +43,8 @@ module Tagtical::Taggable
               all_tags_list_on('#{tag_type}')
             end
           RUBY
-          
-        end        
+
+        end
       end
       
       def acts_as_taggable(*args)
@@ -91,7 +80,7 @@ module Tagtical::Taggable
         conditions = []
 
         options[:on] ||= Tagtical::Tag::Type::BASE
-        tag_type = Tagtical::Tag::Type.find!(options.delete(:on))
+        tag_type = Tagtical::Tag::Type.find(options.delete(:on))
 
         if options.delete(:exclude)
           tags_conditions = tag_list.map { |t| sanitize_sql(["#{Tagtical::Tag.table_name}.value LIKE ?", t]) }.join(" OR ")
@@ -106,15 +95,16 @@ module Tagtical::Taggable
                           " JOIN #{Tagtical::Tag.table_name}" +
                           "   ON #{Tagtical::Tagging.table_name}.tag_id = #{Tagtical::Tag.table_name}.id"
 
-          if tag_type && tag_type.klass.finder_needs_type_condition?
-             conditions << " AND #{tag_type.klass.send(:type_condition).to_sql}"
+          if (finder_condition = tag_type.finder_type_condition(:sql => :append)).present?
+            conditions << sql
           end
+          
           select_clause = "DISTINCT #{table_name}.*" unless !tag_type.base? and tag_types.one?
 
           joins << tagging_join
 
         else
-          tags_by_value = tag_type.klass.where_any_like(tag_list).group_by(&:value)
+          tags_by_value = tag_type.scoped.where_any_like(tag_list).group_by(&:value)
           return scoped(:conditions => "1 = 0") unless tags_by_value.length == tag_list.length # allow for chaining
 
           # Create only one join per tag value.
@@ -188,6 +178,10 @@ module Tagtical::Taggable
         tag_list_cache_on(context)
       end
 
+      def tag_types
+        @tag_types ||= self.class.tag_types.dup
+      end
+
       def all_tags_list_on(context)
         variable_name = tag_type(context).tag_list_ivar(:all)
         return instance_variable_get(variable_name) if instance_variable_get(variable_name)
@@ -195,36 +189,29 @@ module Tagtical::Taggable
         instance_variable_set(variable_name, Tagtical::TagList.new(all_tags_on(context).map(&:value)).freeze)
       end
 
-      if Tagtical.config.support_multiple_taggers?
-        ##
-        # Returns all tags of a given context
-        def all_tags_on(context)
-          tag_table_name = Tagtical::Tag.table_name
-          tagging_table_name = Tagtical::Tagging.table_name
-
-          scope = tag_scope(context)
-
+      ##
+      # Returns all tags of a given context
+      def all_tags_on(context, options={})
+        scope = tag_scope(context, options)
+        if Tagtical.config.support_multiple_taggers?
           if Tagtical::Tag.using_postgresql?
             group_columns = grouped_column_names_for(Tagtical::Tag)
-            scope = scope.order("max(#{tagging_table_name}.created_at)").group(group_columns)
+            scope = scope.order("max(#{Tagtical::Tagging.table_name}.created_at)").group(group_columns)
           else
             scope = scope.group("#{Tagtical::Tag.table_name}.#{Tagtical::Tag.primary_key}")
           end
+        end
+        scope.all
+      end
 
-          scope.all
+      ##
+      # Returns all tags that aren't owned.
+      def tags_on(context, options={})
+        scope = tag_scope(context, options)
+        if Tagtical.config.support_multiple_taggers?
+          scope = scope.where("#{ActsAsTaggableOn::Tagging.table_name}.tagger_id IS NULL")
         end
-
-        ##
-        # Returns all tags that aren't owned.
-        def tags_on(context)
-          tag_scope(context).where("#{ActsAsTaggableOn::Tagging.table_name}.tagger_id IS NULL").all
-        end
-      else
-        # If we don't support multiple taggers, these behave the same.
-        def all_tags_on(context)
-          tag_scope(context).all
-        end
-        alias :tags_on :all_tags_on
+        scope.all
       end
 
       def set_tag_list_on(context, new_list)
@@ -233,7 +220,7 @@ module Tagtical::Taggable
       end
 
       def reload(*args)
-        self.class.tag_types.each do |tag_type|
+        tag_types.each do |tag_type|
           instance_variable_set(tag_type.tag_list_ivar, nil)
           instance_variable_set(tag_type.tag_list_ivar(:all), nil)
         end
@@ -244,27 +231,32 @@ module Tagtical::Taggable
       def save_tags
         # Do the classes from top to bottom. We want the list from "tag" to run before "sub_tag" runs.
         # Otherwise, we will end up removing taggings from "sub_tag" since they aren't on "tag'.
-        self.class.tag_types.sort_by(&:active_record_sti_level).each do |tag_type|
+        tag_types.sort_by(&:active_record_sti_level).each do |tag_type|
           next unless tag_list_cache_set_on?(tag_type)
 
           tag_list = tag_list_cache_on(tag_type).uniq
 
           # Find existing tags or create non-existing tags:
-          tag_list = tag_type.klass.find_or_create_tag_list(tag_list)
+          tag_value_lookup = tag_type.scoped(:find_or_create_tags, tag_list)
+          tags = tag_value_lookup.keys
 
-          current_tags = tags_on(tag_type)
-          old_tags     = current_tags - tag_list
-          new_tags     = tag_list     - current_tags
+          current_tags = tags_on(tag_type, :parents => true)
+          old_tags     = current_tags - tags
+          new_tags     = tags         - current_tags
 
-          # Find taggings to remove:
-          old_taggings = old_tags.empty? ? [] : taggings.find_all_by_tag_id(old_tags)
-
-          if old_taggings.present?
+          # Find and remove old taggings:
+          if old_tags.present? && (old_taggings = taggings.find_all_by_tag_id(old_tags)).present?
+            old_taggings.reject! do |tagging|
+              if tagging.tag.class > tag_type.klass! # parent of current tag type/class, make sure not to remove these taggings.
+                update_tagging_with_inherited_tag!(tagging, new_tags)
+                true
+              end
+            end
             Tagtical::Tagging.destroy_all :id => old_taggings.map(&:id) # Destroy old taggings:
           end
 
           new_tags.each do |tag|
-            taggings.create!(:tag_id => tag.id, :taggable => self) # Create new taggings:
+            taggings.create!(:tag_id => tag.id, :taggable => self, :relevance => tag_value_lookup[tag].relevance) # Create new taggings:
           end
         end
 
@@ -273,14 +265,23 @@ module Tagtical::Taggable
 
       private
 
-      def tag_scope(input)
-        send(tag_type(input).scope_name)
+      def tag_scope(input, options={})
+        tags.where(tag_type(input).finder_type_condition(options))
       end
 
-      # Returns the tag type for the given context and raises an error if it's not a valid tag type.
+      # Returns the tag type for the given context and adds any new types tag_types array on this instance.
       def tag_type(input)
         (@tag_type ||= {})[input] ||= Tagtical::Tag::Type[input].tap do |tag_type|
-          raise("Invalid tag type: #{tag_type}. Must be in #{self.class.tag_types}.") unless self.class.tag_types.include?(tag_type)
+          tag_types << tag_type unless tag_types.include?(tag_type)
+        end
+      end
+
+      # Lets say tag class A inherits from B and B has a tag with value "foo". If we tag A with value "foo",
+      # we want B to have only one instance of "foo" and that tag should be an instance of A (a subclass of B).
+      def update_tagging_with_inherited_tag!(tagging, tags)
+        if tags.present? && (tag = Tagtical::Tag.send(:detect_comparable, tags, tagging.tag.value))
+          tagging.update_attribute(:tag, tag)
+          tags.delete(tag)
         end
       end
 

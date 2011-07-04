@@ -36,13 +36,16 @@ describe @klass do
       @tag3 = @klass.new(:value => "bike").tap { |x| x["relevance"] = "1.1" }
       @tags = [@tag1, @tag2, @tag3]
     end
+    
     it "should sort by relevance if all tags have them" do
       @tags.sort.map(&:value).should == ["bike", "plane", "car"]
     end
+
     it "should fallback gracefully when relevance not provided" do
       @tag3["relevance"] = nil
       @tags.sort.map(&:value).should == ["bike", "plane", "car"]
     end
+
     it "should sort by value when no relevances provided" do
       @tags.each { |t| t["relevance"] = nil }
       @tags.sort.map(&:value).should == ["bike", "car", "plane"]
@@ -55,7 +58,7 @@ describe @klass do
     it { should_not == @klass.new }
   end
 
-  describe "#find_or_create_tag_list" do
+  describe "#find_or_create_tags" do
     before(:each) do
       @klass.create!(:value => "awesome")
       @klass.create!(:value => "epic")
@@ -63,7 +66,7 @@ describe @klass do
 
     it "should find both tags" do
       lambda {
-        @klass.find_or_create_tag_list("awesome", "epic")
+        @klass.find_or_create_tags("awesome", "epic")
       }.should change(@klass, :count).by(0)
     end
   end
@@ -105,34 +108,34 @@ describe @klass do
     end
   end
 
-  describe ".find_or_create_tag_list" do
+  describe ".find_or_create_tags" do
     before(:each) do
       @tag.value = "awesome"
       @tag.save!
     end
 
     it "should find by name" do
-      @klass.find_or_create_tag_list("awesome").should == [@tag]
+      @klass.find_or_create_tags("awesome").should == {@tag => "awesome"}
     end
 
     it "should find by name case insensitive" do
-      @klass.find_or_create_tag_list("AWESOME").should == [@tag]
+      @klass.find_or_create_tags("AWESOME").should == {@tag => "AWESOME"}
     end
 
     it "should create by name" do
       lambda {
-        @klass.find_or_create_tag_list("epic")
+        @klass.find_or_create_tags("epic")
       }.should change(@klass, :count).by(1)
     end
 
     it "should find or create by name" do
       lambda {
-        @klass.find_or_create_tag_list("awesome", "epic").map(&:value).should == ["awesome", "epic"]
+        @klass.find_or_create_tags("awesome", "epic").keys.map(&:value).should == ["awesome", "epic"]
       }.should change(@klass, :count).by(1)
     end
 
     it "should return an empty array if no tags are specified" do
-      @klass.find_or_create_tag_list([]).should == []
+      @klass.find_or_create_tags([]).should == {}
     end
   end
 
@@ -170,7 +173,7 @@ describe @klass do
     subject { @type }
 
     its(:klass) { should == Tag::Skill }
-    its(:scope_name) { should == "skills" }
+    its(:scope_name) { should == :skills }
 
     describe "initialize" do
       it "converts string into correct format" do
@@ -212,9 +215,8 @@ describe @klass do
     context "when type is 'Tag'" do
       before { @type = @klass.new("tag") }
       its(:klass) { should == Tagtical::Tag }
-      its(:scope_name) { should == "tags" }
+      its(:scope_name) { should == :tags }
     end
 
   end
-
 end

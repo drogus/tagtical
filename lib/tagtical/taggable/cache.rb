@@ -25,7 +25,7 @@ module Tagtical::Taggable
         end        
       end
       
-      def tagtical(*args)
+      def acts_as_taggable(*args)
         super(*args)
         initialize_tagtical_cache
       end

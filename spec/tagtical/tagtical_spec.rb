@@ -1,6 +1,6 @@
 require File.expand_path('../../spec_helper', __FILE__)
 
-describe "Acts As Taggable" do
+describe Tagtical do
   before(:each) do
     clean_database!
   end
@@ -13,7 +13,7 @@ describe "Acts As Taggable" do
     before(:each) do
       clean_database!
       TaggableModel.write_inheritable_attribute(:tag_types, [])
-      TaggableModel.tagtical(:tags, :languages, :skills, :needs, :offerings)
+      TaggableModel.acts_as_taggable(:tags, :languages, :skills, :needs, :offerings)
       @taggable = TaggableModel.new(:name => "Bob Jones")
     end
 
@@ -182,30 +182,68 @@ describe "Acts As Taggable" do
 
   describe 'Tagging Contexts' do
     it 'should eliminate duplicate tagging contexts ' do
-      TaggableModel.tagtical(:skills, :skills)
-      TaggableModel.tag_types.freq[:skills].should_not == 3
+      TaggableModel.acts_as_taggable(:skills, :skills)
+      TaggableModel.tag_types.freq["skill"].should == 1
     end
 
     it "should not contain embedded/nested arrays" do
-      TaggableModel.tagtical([:array], [:array])
-      TaggableModel.tag_types.freq[[:array]].should == 0
+      TaggableModel.acts_as_taggable([:skills], [:skills])
+      TaggableModel.tag_types.freq[[:skills]].should == 0
     end
 
     it "should _flatten_ the content of arrays" do
-      TaggableModel.tagtical([:array], [:array])
-      TaggableModel.tag_types.freq[:array].should == 1
+      TaggableModel.acts_as_taggable([:skills], [:skills])
+      TaggableModel.tag_types.freq["skill"].should == 1
+    end
+
+    it "should support tag_types without an associated Tag subclass" do
+      lambda { TaggableModel.acts_as_taggable(:doesnt_exist) }.should_not raise_error
     end
 
     it "should not raise an error when passed nil" do
       lambda {
-        TaggableModel.tagtical()
+        TaggableModel.acts_as_taggable()
       }.should_not raise_error
     end
 
     it "should not raise an error when passed [nil]" do
       lambda {
-        TaggableModel.tagtical([nil])
+        TaggableModel.acts_as_taggable([nil])
       }.should_not raise_error
+    end
+
+    context "when Tag subclass is not present" do
+
+      before do
+        TaggableModel.acts_as_taggable(:machines)
+        @taggable_model = TaggableModel.create!(:name => "Taggable 1", :tag_list => "random, tags")
+        @taggable_model.machine_list = "car, plane, train"
+        @taggable_model.save!
+        @taggable_model.reload
+        @tag_type = @taggable_model.tag_types.find { |t| t=="machine" }
+      end
+
+      specify { @tag_type.klass.should be_nil }
+
+      it "should have basic tagging methods" do
+        @taggable_model.machines.map(&:value).sort.should == ["car", "plane", "train"]
+        @taggable_model.tags.machines.map(&:value).sort.should == ["car", "plane", "train"]
+      end
+
+      it "should instantiate with Tagtical::Tag" do
+        @taggable_model.machines.each { |tag| tag.should be_an_instance_of Tagtical::Tag }
+      end
+
+    end
+  end
+
+  describe "Tagging With Relevance" do
+    before do
+      @taggable_model = TaggableModel.create!(:name => "Taggable", :tag_list => {"random" => 0.45, "tags" => 1.54}, :skill_list => "tennis")
+    end
+
+    it "should have tags with relevance" do
+      @taggable_model.tags.sort.map(&:relevance).should == [0.45, Tagtical::Tagging.default_relevance, 1.54]
     end
   end
 

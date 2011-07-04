@@ -41,21 +41,14 @@ describe "acts_as_tagger" do
         @tagger = TaggableUser.new()
         @taggable = TaggableModel.new(:name=>"Richard Prior")
       end
-      
+
       it "should by default not throw an exception " do
         @taggable.tag_list_on(:foo).should be_empty
         lambda {
           @tagger.tag(@taggable, :with=>'this, and, that', :on=>:foo)
         }.should_not raise_error
       end
-      
-      it 'should by default create the tag context on-the-fly' do
-        @taggable.tag_list_on(:here_ond_now).should be_empty
-        @tagger.tag(@taggable, :with=>'that', :on => :here_ond_now)
-        @taggable.tag_list_on(:here_ond_now).should_not include('that')
-        @taggable.all_tags_list_on(:here_ond_now).should include('that')
-      end
-      
+
       it "should show all the tag list when both public and owned tags exist" do
         @taggable.tag_list = 'ruby, python'
         @tagger.tag(@taggable, :with => 'java, lisp', :on => :tags)
@@ -69,19 +62,7 @@ describe "acts_as_tagger" do
         @tagger.tag(@taggable, :with => '', :on => :tags)
         @taggable.tag_list.should == %w(ruby python)
       end
-      
-      it "should throw an exception when the default is over-ridden" do
-        @taggable.tag_list_on(:foo_boo).should be_empty
-        lambda {
-          @tagger.tag(@taggable, :with=>'this, and, that', :on=>:foo_boo, :force=>false)
-        }.should raise_error        
-      end
 
-      it "should not create the tag context on-the-fly when the default is over-ridden" do
-        @taggable.tag_list_on(:foo_boo).should be_empty
-        @tagger.tag(@taggable, :with=>'this, and, that', :on=>:foo_boo, :force=>false) rescue
-        @taggable.tag_list_on(:foo_boo).should be_empty
-      end
     end
     
     describe "when called by multiple tagger's" do

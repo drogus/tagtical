@@ -1,5 +1,13 @@
 module Tagtical
   class TagList < Array
+    class TagValue < String
+      attr_accessor :relevance
+      def initialize(value, relevance=nil)
+        @relevance = relevance
+        super(value)
+      end
+    end
+    
     cattr_accessor :delimiter
     self.delimiter = ','
 
@@ -16,19 +24,32 @@ module Tagtical
     #   tag_list = TagList.from("One , Two,  Three")
     #   tag_list # ["One", "Two", "Three"]
     def self.from(string)
-      glue   = delimiter.ends_with?(" ") ? delimiter : "#{delimiter} "
-      string = string.join(glue) if string.respond_to?(:join)
+      if string.is_a?(Hash)
+        new(string)
+      else
+        glue   = delimiter.ends_with?(" ") ? delimiter : "#{delimiter} "
+        string = string.join(glue) if string.respond_to?(:join)
 
-      new.tap do |tag_list|
-        string = string.to_s.dup
+        new.tap do |tag_list|
+          string = string.to_s.dup
 
-        # Parse the quoted tags
-        string.gsub!(/(\A|#{delimiter})\s*"(.*?)"\s*(#{delimiter}\s*|\z)/) { tag_list << $2; $3 }
-        string.gsub!(/(\A|#{delimiter})\s*'(.*?)'\s*(#{delimiter}\s*|\z)/) { tag_list << $2; $3 }
+          # Parse the quoted tags
+          string.gsub!(/(\A|#{delimiter})\s*"(.*?)"\s*(#{delimiter}\s*|\z)/) { tag_list << $2; $3 }
+          string.gsub!(/(\A|#{delimiter})\s*'(.*?)'\s*(#{delimiter}\s*|\z)/) { tag_list << $2; $3 }
 
-        tag_list.add(string.split(delimiter))
+          tag_list.add(string.split(delimiter))
+        end
       end
     end
+
+    def concat(values)
+      super(values.map! { |v| convert_tag_value(v) })
+    end
+
+    def push(value)
+      super(convert_tag_value(value))
+    end
+    alias << push
 
     ##
     # Add tags to the tag_list. Duplicate or blank tags will be ignored.
@@ -37,6 +58,7 @@ module Tagtical
     # Example:
     #   tag_list.add("Fun", "Happy")
     #   tag_list.add("Fun, Happy", :parse => true)
+    #   tag_list.add("Fun" => "0.546", "Happy" => 0.465) # add relevance
     def add(*values)
       extract_and_apply_options!(values)
       concat(values)
@@ -78,19 +100,28 @@ module Tagtical
     # Remove whitespace, duplicates, and blanks.
     def clean!
       reject!(&:blank?)
-      map!(&:strip)
+      each(&:strip!)
       uniq!
     end
 
     def extract_and_apply_options!(args)
-      options = args.last.is_a?(Hash) ? args.pop : {}
-      options.assert_valid_keys :parse
+      if args.size==1 && args[0].is_a?(Hash)
+        args.replace(args[0].map { |value, relevance| TagValue.new(value, relevance) })
+      else
+        options = args.last.is_a?(Hash) ? args.pop : {}
+        options.assert_valid_keys :parse
 
-      if options[:parse]
-        args.map! { |a| self.class.from(a) }
+        if options[:parse]
+          args.map! { |a| self.class.from(a) }
+        end
+
+        args.flatten!
       end
-
-      args.flatten!
     end
+
+    def convert_tag_value(value)
+      value.is_a?(TagValue) ? value : TagValue.new(value)
+    end
+
   end
 end
