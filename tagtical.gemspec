@@ -5,11 +5,11 @@
 
 Gem::Specification.new do |s|
   s.name = %q{tagtical}
-  s.version = "1.0.1"
+  s.version = "1.0.3"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Aryk Grosz"]
-  s.date = %q{2011-07-04}
+  s.date = %q{2011-07-05}
   s.description = %q{Tagtical allows you do create subclasses for Tag and add additional functionality in an STI fashion. For example. You could do Tag::Color.find_by_name('blue').to_rgb. It also supports storing weights or relevance on the taggings.}
   s.email = %q{aryk@mixbook.com}
   s.extra_rdoc_files = [
@@ -48,7 +48,6 @@ Gem::Specification.new do |s|
     "spec/models.rb",
     "spec/schema.rb",
     "spec/spec_helper.rb",
-    "spec/tagtical/acts_as_taggable_on.sqlite3",
     "spec/tagtical/acts_as_tagger_spec.rb",
     "spec/tagtical/tag_list_spec.rb",
     "spec/tagtical/tag_spec.rb",
@@ -73,6 +72,7 @@ Gem::Specification.new do |s|
       s.add_runtime_dependency(%q<mysql>, [">= 0"])
       s.add_runtime_dependency(%q<jeweler>, [">= 0"])
       s.add_runtime_dependency(%q<rcov>, [">= 0"])
+      s.add_runtime_dependency(%q<psych>, [">= 0"])
     else
       s.add_dependency(%q<rails>, ["= 3.0.5"])
       s.add_dependency(%q<rspec>, ["= 2.6.0"])
@@ -80,6 +80,7 @@ Gem::Specification.new do |s|
       s.add_dependency(%q<mysql>, [">= 0"])
       s.add_dependency(%q<jeweler>, [">= 0"])
       s.add_dependency(%q<rcov>, [">= 0"])
+      s.add_dependency(%q<psych>, [">= 0"])
     end
   else
     s.add_dependency(%q<rails>, ["= 3.0.5"])
@@ -88,6 +89,7 @@ Gem::Specification.new do |s|
     s.add_dependency(%q<mysql>, [">= 0"])
     s.add_dependency(%q<jeweler>, [">= 0"])
     s.add_dependency(%q<rcov>, [">= 0"])
+    s.add_dependency(%q<psych>, [">= 0"])
   end
 end
 
