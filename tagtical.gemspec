@@ -5,7 +5,7 @@
 
 Gem::Specification.new do |s|
   s.name = %q{tagtical}
-  s.version = "0.1.0"
+  s.version = "1.0.3"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Aryk Grosz"]
@@ -72,6 +72,7 @@ Gem::Specification.new do |s|
       s.add_runtime_dependency(%q<mysql>, [">= 0"])
       s.add_runtime_dependency(%q<jeweler>, [">= 0"])
       s.add_runtime_dependency(%q<rcov>, [">= 0"])
+      s.add_runtime_dependency(%q<psych>, [">= 0"])
     else
       s.add_dependency(%q<rails>, ["= 3.0.5"])
       s.add_dependency(%q<rspec>, ["= 2.6.0"])
@@ -79,6 +80,7 @@ Gem::Specification.new do |s|
       s.add_dependency(%q<mysql>, [">= 0"])
       s.add_dependency(%q<jeweler>, [">= 0"])
       s.add_dependency(%q<rcov>, [">= 0"])
+      s.add_dependency(%q<psych>, [">= 0"])
     end
   else
     s.add_dependency(%q<rails>, ["= 3.0.5"])
@@ -87,6 +89,7 @@ Gem::Specification.new do |s|
     s.add_dependency(%q<mysql>, [">= 0"])
     s.add_dependency(%q<jeweler>, [">= 0"])
     s.add_dependency(%q<rcov>, [">= 0"])
+    s.add_dependency(%q<psych>, [">= 0"])
   end
 end
 
