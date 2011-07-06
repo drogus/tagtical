@@ -4,11 +4,10 @@ require "active_support/hash_with_indifferent_access"
 
 module Tagtical
 
-  YAML::ENGINE.yamler = "syck"
-
   # Place a tagtical.yml file in the config directory to control settings
   mattr_accessor :config
   self.config = ActiveSupport::InheritableOptions.new(ActiveSupport::HashWithIndifferentAccess.new.tap do |hash|
+    require 'yaml'
     path = Rails.root.join("config", "tagtical.yml") rescue ""
     hash.update(YAML.load_file(path)) if File.exists?(path)
     # If tagger association options were not provided, then use the polymorphic_tagger association.
