@@ -1,6 +1,6 @@
 require File.expand_path('../../spec_helper', __FILE__)
 
-describe @klass do
+describe Tagtical::Tag do
 
   before do
     clean_database!
@@ -15,9 +15,7 @@ describe @klass do
   its(:count) { should == 0 }
   its(:to_s) { should == @tag.value }
 
-  describe(".sti_name") do
-    specify { @klass.sti_name == "tag" }
-  end
+  specify { @klass.sti_name.should be_nil }
 
   its(:type) { should be_nil }
 
@@ -27,6 +25,71 @@ describe @klass do
         @klass.send(:find_sti_class, arg).should == result
       end
     end
+  end
+
+  describe "validations" do
+
+    it "should require a value" do
+      {"" => 1, nil => 1, "foo" => 0}.each do |value, error_count|
+        @tag.value = value
+        @tag.valid?
+        @tag.errors[:value].should have(error_count).items
+      end
+    end
+
+    it "should be unique on value and type" do
+      lambda {
+        Tag::Skill.create!(:value => "foo")
+        Tag::Craft.create!(:value => "foo")
+      }.should change(@klass, :count).by(2)
+    end
+
+    context "when possible_values specified" do
+      before { @klass.possible_values = %w{knife fork spoon} }
+      after { @klass.possible_values = nil}
+
+      it "should not be valid if value is not in possible_values" do
+        @tag.value = "glass"
+        @tag.should be_invalid
+        @tag.errors[:value][0].should == %{Value "glass" not found in list: ["knife", "fork", "spoon"]}
+      end
+    end
+
+  end
+
+  describe "#dump_value" do
+    before do
+      @tag = Tagtical::Tag::PartTag.new(:value => "FOO")
+    end
+
+    its(:value) { should == "foo" }
+
+    it "should accept a nil value" do
+      lambda { @tag.value = nil }.should_not raise_error
+      @tag.value.should be_nil
+    end
+  end
+  
+  describe "#load_value" do
+    before do
+      @tag = Tag::Skill.new(:value => "basketball")
+    end
+
+    specify  { @tag[:value].should == "basketball" }
+    
+    its(:value) { should == "basketballer" }
+
+    it "should accept a nil value" do
+      lambda { @tag.value = nil }.should_not raise_error
+      @tag.value.should be_nil
+    end
+  end
+
+  it "should refresh @value on value setter" do
+    @tag.value = "foo"
+    @tag.value.should == "foo"
+    @tag.value = "bar"
+    @tag.value.should == "bar"
   end
 
   describe "sort" do

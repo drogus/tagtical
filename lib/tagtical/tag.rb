@@ -1,6 +1,6 @@
 module Tagtical
   class Tag < ::ActiveRecord::Base
-
+    
     attr_accessible :value
 
     ### ASSOCIATIONS:
@@ -8,10 +8,14 @@ module Tagtical
     has_many :taggings, :dependent => :destroy, :class_name => 'Tagtical::Tagging'
 
     ### VALIDATIONS:
+    
+    validates :value, :uniqueness => {:scope => :type}, :presence => true # type is not required, it can be blank
 
-    validates_presence_of :value # type is not required, it can be blank
-    validates_uniqueness_of :value, :scope => :type
+    ## POSSIBLE_VALUES SUPPORT:
 
+    class_attribute :possible_values
+    validate :validate_possible_values
+    
     self.store_full_sti_class = false
 
     ### CLASS METHODS:
@@ -106,14 +110,35 @@ module Tagtical
       value
     end
 
+    # Overwrite these methods to provide your own storage mechanism for a tag.
+    def load_value(value) value end
+    def dump_value(value) value end
+
+    def value
+      @value ||= load_value(self[:value])
+    end
+
+    def value=(value)
+      @value = nil
+      self[:value] = dump_value(value)
+    end
+
     # We return nil if we are *not* an STI class.
     def type
-      type = read_attribute(:type)
+      type = self[:type]
       type && Type[type]
     end
 
     def count
-      read_attribute(:count).to_i
+      self[:count].to_i
+    end
+
+    private
+
+    def validate_possible_values
+      if possible_values && !possible_values.include?(value)
+        errors.add(:value, %{Value "#{value}" not found in list: #{possible_values.inspect}})
+      end
     end
 
     class Type < String
