@@ -52,7 +52,6 @@ begin
     gemspec.homepage = "https://github.com/Mixbook/tagtical"
     gemspec.authors = ["Aryk Grosz"]
     gemspec.files =  FileList["[A-Z]*", "{generators,lib,spec,rails}/**/*"] - FileList["**/*.log"]
-    gemspec.version = '0.1.0'
   end
   Jeweler::GemcutterTasks.new
 rescue LoadError
