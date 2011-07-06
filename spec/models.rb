@@ -5,11 +5,21 @@ module Tagtical
     class Language < Tagtical::Tag
     end
     class PartTag < Tagtical::Tag
+      
+      def dump_value(value)
+        value && value.downcase
+      end
+
     end
   end
 end
 module Tag
   class Skill < Tagtical::Tag
+
+    def load_value(value)
+      value.gsub("ball", "baller") if value
+    end
+    
   end
   class Craft < Skill # Multiple levels of inheritance
   end
