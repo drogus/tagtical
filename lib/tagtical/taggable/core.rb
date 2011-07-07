@@ -23,7 +23,7 @@ module Tagtical::Taggable
 
           has_many tag_type.has_many_name, :through => :taggings, :source => :tag, :class_name => "Tagtical::Tag",
                    :select     => "#{Tagtical::Tag.table_name}.*, #{Tagtical::Tagging.table_name}.relevance", # include the relevance on the tags
-                   :conditions => %{"#{Tagtical::Tag.table_name}"."id" = "#{Tagtical::Tagging.table_name}"."tag_id"#{tag_type.finder_type_condition(:sql => :append)}}
+                   :conditions => %{#{Tagtical::Tag.table_name}.id = #{Tagtical::Tagging.table_name}.tag_id#{tag_type.finder_type_condition(:sql => :append)}}
 
           # In the case of the base tag type, it will just use the :tags association defined above.
           unless tag_type.base?
