@@ -85,6 +85,15 @@ describe Tagtical::Taggable do
     TaggableModel.tagged_with("bob", :on => :tags).first.should == @taggable
   end
 
+  it "should be able to search by tag type" do
+    TaggableModel.create!(:name => "Ted", :skill_list => "ruby")
+    TaggableModel.create!(:name => "Tom", :skill_list => "ruby, rails, css")
+    TaggableModel.create!(:name => "Fiona", :skill_list => "html, ruby, rails, css")
+
+    TaggableModel.tagged_with("ruby", :on => :skills).flatten.should == TaggableModel.skills("ruby").flatten
+    TaggableModel.tagged_with(["ruby", "rails", "css"], :on => :skills).flatten.should == TaggableModel.skills("ruby", "rails", "css").flatten
+  end
+
   it "should not care about case" do
     bob = TaggableModel.create!(:name => "Bob", :tag_list => "ruby")
     frank = TaggableModel.create!(:name => "Frank", :tag_list => "Ruby")

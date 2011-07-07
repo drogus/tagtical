@@ -41,6 +41,10 @@ describe Tagtical do
       TaggableModel.should respond_to(:tagged_with, :tag_counts)
     end
 
+    it "should generate methods for each tag_type" do
+      TaggableModel.should respond_to(:tags, :languages, :skills, :needs, :offerings)
+    end
+
     it "should generate a tag_list accessor/setter for each tag type" do
       @taggable.should respond_to(:tag_list, :skill_list, :language_list)
       @taggable.should respond_to(:tag_list=, :skill_list=, :language_list=)
