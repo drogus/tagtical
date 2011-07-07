@@ -44,6 +44,12 @@ module Tagtical::Taggable
             end
           RUBY
 
+          instance_eval <<-RUBY
+            def #{tag_type.pluralize}(*tags)
+              tagged_with tags.to_a, :on => :#{tag_type}
+            end
+          RUBY
+
         end
       end
       
