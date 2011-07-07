@@ -237,6 +237,14 @@ describe Tagtical do
     end
   end
 
+  describe "Tagging with Symbols" do
+    it "should tag with symbols" do
+      @taggable_model = TaggableModel.create!(:name => "Taggable", :tag_list => [:tag1, :tag2])
+      @taggable_model.tag_list.should == ["tag1", "tag2"]
+    end
+
+  end
+
   describe "Tagging With Relevance" do
     before do
       @taggable_model = TaggableModel.create!(:name => "Taggable", :tag_list => {"random" => 0.45, "tags" => 1.54}, :skill_list => "tennis, pottery")

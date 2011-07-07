@@ -4,7 +4,7 @@ module Tagtical
       attr_accessor :relevance
       def initialize(value, relevance=nil)
         @relevance = relevance
-        super(value)
+        super(value.to_s)
       end
     end
     
