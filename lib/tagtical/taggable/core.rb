@@ -203,13 +203,11 @@ module Tagtical::Taggable
       # Returns all tags of a given context
       def all_tags_on(context, options={})
         scope = tag_scope(context, options)
-        if Tagtical.config.support_multiple_taggers?
-          if Tagtical::Tag.using_postgresql?
-            group_columns = grouped_column_names_for(Tagtical::Tag)
-            scope = scope.order("max(#{Tagtical::Tagging.table_name}.created_at)").group(group_columns)
-          else
-            scope = scope.group("#{Tagtical::Tag.table_name}.#{Tagtical::Tag.primary_key}")
-          end
+        if Tagtical::Tag.using_postgresql?
+          group_columns = grouped_column_names_for(Tagtical::Tag)
+          scope = scope.order("max(#{Tagtical::Tagging.table_name}.created_at)").group(group_columns)
+        else
+          scope = scope.group("#{Tagtical::Tag.table_name}.#{Tagtical::Tag.primary_key}")
         end
         scope.all
       end
@@ -217,11 +215,7 @@ module Tagtical::Taggable
       ##
       # Returns all tags that aren't owned.
       def tags_on(context, options={})
-        scope = tag_scope(context, options)
-        if Tagtical.config.support_multiple_taggers?
-          scope = scope.where("#{Tagtical::Tagging.table_name}.tagger_id IS NULL")
-        end
-        scope.all
+        tag_scope(context, options).where("#{Tagtical::Tagging.table_name}.tagger_id IS NULL").all
       end
 
       def set_tag_list_on(context, new_list)
@@ -253,16 +247,17 @@ module Tagtical::Taggable
           current_tags = tags_on(tag_type, :parents => true)
           old_tags     = current_tags - tags
           new_tags     = tags         - current_tags
- 
+
+          unowned_taggings = taggings.where(:tagger_id => nil)
 
           # If relevances are specified on current tags, make sure to update those 
           tags_requiring_relevance_update = tag_value_lookup.map { |tag, value| tag if !value.relevance.nil? }.compact & current_tags
-          if tags_requiring_relevance_update.present? && (update_taggings = taggings.find_all_by_tag_id(tags_requiring_relevance_update)).present?
+          if tags_requiring_relevance_update.present? && (update_taggings = unowned_taggings.find_all_by_tag_id(tags_requiring_relevance_update)).present?
             update_taggings.each { |tagging| tagging.update_attribute(:relevance, tag_value_lookup[tagging.tag].relevance) }
           end
 
           # Find and remove old taggings:
-          if old_tags.present? && (old_taggings = taggings.find_all_by_tag_id(old_tags)).present?
+          if old_tags.present? && (old_taggings = unowned_taggings.find_all_by_tag_id(old_tags)).present?
             old_taggings.reject! do |tagging|
               if tagging.tag.class > tag_type.klass! # parent of current tag type/class, make sure not to remove these taggings.
                 update_tagging_with_inherited_tag!(tagging, new_tags, tag_value_lookup)

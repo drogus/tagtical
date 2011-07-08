@@ -18,7 +18,7 @@ module Tagtical::Taggable
       def initialize_acts_as_taggable_ownership
         tag_types.each do |tag_type|
           class_eval <<-RUBY, __FILE__, __LINE__ + 1
-            def #{tag_type}_from(owner)
+            def #{tag_type.pluralize}_from(owner)
               owner_tag_list_on(owner, '#{tag_type}')
             end      
           RUBY
@@ -77,7 +77,7 @@ module Tagtical::Taggable
             new_tags   = tags       - owned_tags
 
             # Find and remove old taggings:
-            if old_tags.present? && (old_taggings = owner_taggings.find_all_by_tag_id(old_tags)).present?
+            if old_tags.present? && (old_taggings = owner_taggings(owner).find_all_by_tag_id(old_tags)).present?
               old_taggings.reject! do |tagging|
                 if tagging.tag.class > tag_type.klass! # parent of current tag type/class, make sure not to remove these taggings.
                   update_tagging_with_inherited_tag!(tagging, new_tags, tag_value_lookup)
@@ -89,12 +89,7 @@ module Tagtical::Taggable
 
             # Create new taggings:
             new_tags.each do |tag|
-              attrs = {:tagger => owner, :relevance => tag_value_lookup[tag].relevance}
-              if !Tagtical.config.support_multiple_taggers? && (current_tagging = taggings.find_by_tag_id(tag.id))
-                current_tagging.update_attributes!(attrs) # overwrite the tagger if there is one.
-              else
-                taggings.create!(attrs.merge(:tag_id => tag.id))
-              end
+              taggings.create!(:tagger => owner, :relevance => tag_value_lookup[tag].relevance, :tag_id => tag.id)
             end
           end
         end
@@ -104,12 +99,9 @@ module Tagtical::Taggable
 
       # Find all taggings that belong to the taggable (self), are owned by the owner,
       # have the correct context, and are removed from the list.
-      def owner_taggings
-        relation = taggings
-        if Tagtical.config.support_multiple_taggers?
-          relation = relation.where(:tagger_id   => owner.id)
-          relation = relation.where(:tagger_type => owner.class.to_s) if Tagtical.config.polymorphic_tagger?
-        end
+      def owner_taggings(owner)
+        relation = taggings.where(:tagger_id   => owner.id)
+        relation = relation.where(:tagger_type => owner.class.to_s) if Tagtical.config.polymorphic_tagger?
         relation
       end
 

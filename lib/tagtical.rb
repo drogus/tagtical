@@ -12,8 +12,7 @@ module Tagtical
     hash.update(YAML.load_file(path)) if File.exists?(path)
     # If tagger association options were not provided, then use the polymorphic_tagger association.
     hash.reverse_merge!(
-      :polymorphic_tagger? => !hash[:tagger], 
-      :support_multiple_taggers? => false # allow multiple taggers for a given tag.
+      :polymorphic_tagger? => !hash[:tagger]
     )
   end)
 
