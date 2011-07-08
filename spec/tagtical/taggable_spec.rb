@@ -92,6 +92,7 @@ describe Tagtical::Taggable do
 
     TaggableModel.tagged_with("ruby", :on => :skills).flatten.should == TaggableModel.skills("ruby").flatten
     TaggableModel.tagged_with(["ruby", "rails", "css"], :on => :skills).flatten.should == TaggableModel.skills("ruby", "rails", "css").flatten
+    TaggableModel.skills("ruby", "rails").flatten.should have(2).items
   end
 
   it "should not care about case" do
