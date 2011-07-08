@@ -95,6 +95,12 @@ module Tagtical
       end.join(delimiter.ends_with?(" ") ? delimiter : "#{delimiter} ")
     end
 
+    # Builds an option statement for an ActiveRecord table.
+    def to_sql_conditions(options={})
+      options.reverse_merge!(:class => Tagtical::Tag, :column => "value", :operator => "=")
+      "(" + map { |t| options[:class].send(:sanitize_sql, ["#{options[:class].table_name}.#{options[:column]} #{options[:operator]} ?", t]) }.join(" OR ") + ")"
+    end
+
     private
   
     # Remove whitespace, duplicates, and blanks.

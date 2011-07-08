@@ -31,6 +31,11 @@ module Tagtical::Taggable
           end
 
           class_eval <<-RUBY, __FILE__, __LINE__ + 1
+            def self.#{tag_type.pluralize}(*tags)
+              options = tags.extract_options!
+              tagged_with(tags.flatten, options.merge(:on => :#{tag_type}))
+            end
+
             def #{tag_type}_list
               tag_list_on('#{tag_type}')
             end
@@ -41,12 +46,6 @@ module Tagtical::Taggable
 
             def all_#{tag_type.pluralize}_list
               all_tags_list_on('#{tag_type}')
-            end
-          RUBY
-
-          instance_eval <<-RUBY
-            def #{tag_type.pluralize}(*tags)
-              tagged_with tags.to_a, :on => :#{tag_type}
             end
           RUBY
 
@@ -88,24 +87,28 @@ module Tagtical::Taggable
 
         options[:on] ||= Tagtical::Tag::Type::BASE
         tag_type = Tagtical::Tag::Type.find(options.delete(:on))
+        tag_table, tagging_table = Tagtical::Tag.table_name, Tagtical::Tagging.table_name
 
         if options.delete(:exclude)
-          tags_conditions = tag_list.map { |t| sanitize_sql(["#{Tagtical::Tag.table_name}.value LIKE ?", t]) }.join(" OR ")
-          conditions << "#{table_name}.#{primary_key} NOT IN (SELECT #{Tagtical::Tagging.table_name}.taggable_id FROM #{Tagtical::Tagging.table_name} JOIN #{Tagtical::Tag.table_name} ON #{Tagtical::Tagging.table_name}.tag_id = #{Tagtical::Tag.table_name}.id AND (#{tags_conditions}) WHERE #{Tagtical::Tagging.table_name}.taggable_type = #{quote_value(base_class.name)})"
+          conditions << "#{table_name}.#{primary_key} NOT IN (" +
+            "SELECT #{tagging_table}.taggable_id " +
+            "FROM #{tagging_table} " +
+            "JOIN #{tag_table} ON #{tagging_table}.tag_id = #{tag_table}.id AND #{tag_list.to_sql_conditions(:operator => "LIKE")} " +
+            "WHERE #{tagging_table}.taggable_type = #{quote_value(base_class.name)})"
 
         elsif options.delete(:any)
-          conditions << tag_list.map { |t| sanitize_sql(["#{Tagtical::Tag.table_name}.value LIKE ?", t]) }.join(" OR ")
+          conditions << tag_list.to_sql_conditions(:operator => "LIKE")
 
-          tagging_join  = " JOIN #{Tagtical::Tagging.table_name}" +
-                          "   ON #{Tagtical::Tagging.table_name}.taggable_id = #{table_name}.#{primary_key}" +
-                          "  AND #{Tagtical::Tagging.table_name}.taggable_type = #{quote_value(base_class.name)}" +
-                          " JOIN #{Tagtical::Tag.table_name}" +
-                          "   ON #{Tagtical::Tagging.table_name}.tag_id = #{Tagtical::Tag.table_name}.id"
+          tagging_join  = " JOIN #{tagging_table}" +
+                          "   ON #{tagging_table}.taggable_id = #{table_name}.#{primary_key}" +
+                          "  AND #{tagging_table}.taggable_type = #{quote_value(base_class.name)}" +
+                          " JOIN #{tag_table}" +
+                          "   ON #{tagging_table}.tag_id = #{tag_table}.id"
 
-          if (finder_condition = tag_type.finder_type_condition(:sql => :append)).present?
-            conditions << sql
+          if (finder_condition = tag_type.finder_type_condition(:sql => true)).present?
+            conditions << finder_condition
           end
-          
+
           select_clause = "DISTINCT #{table_name}.*" unless !tag_type.base? and tag_types.one?
 
           joins << tagging_join
@@ -122,7 +125,7 @@ module Tagtical::Taggable
 
               taggings_alias = "#{undecorated_table_name}_taggings_#{prefix}"
 
-              tagging_join  = "JOIN #{Tagtical::Tagging.table_name} #{taggings_alias}" +
+              tagging_join  = "JOIN #{tagging_table} #{taggings_alias}" +
                 "  ON #{taggings_alias}.taggable_id = #{table_name}.#{primary_key}" +
                 " AND #{taggings_alias}.taggable_type = #{quote_value(base_class.name)}" +
                 " AND #{sanitize_sql("#{taggings_alias}.tag_id" => tags.map(&:id))}"
@@ -135,7 +138,7 @@ module Tagtical::Taggable
         taggings_alias, tags_alias = "#{undecorated_table_name}_taggings_group", "#{undecorated_table_name}_tags_group"
 
         if options.delete(:match_all)
-          joins << "LEFT OUTER JOIN #{Tagtical::Tagging.table_name} #{taggings_alias}" +
+          joins << "LEFT OUTER JOIN #{tagging_table} #{taggings_alias}" +
                    "  ON #{taggings_alias}.taggable_id = #{table_name}.#{primary_key}" +
                    " AND #{taggings_alias}.taggable_type = #{quote_value(base_class.name)}"
 

@@ -90,9 +90,22 @@ describe Tagtical::Taggable do
     TaggableModel.create!(:name => "Tom", :skill_list => "ruby, rails, css")
     TaggableModel.create!(:name => "Fiona", :skill_list => "html, ruby, rails, css")
 
-    TaggableModel.tagged_with("ruby", :on => :skills).flatten.should == TaggableModel.skills("ruby").flatten
-    TaggableModel.tagged_with(["ruby", "rails", "css"], :on => :skills).flatten.should == TaggableModel.skills("ruby", "rails", "css").flatten
-    TaggableModel.skills("ruby", "rails").flatten.should have(2).items
+    TaggableModel.tagged_with("ruby", :on => :skills).sort_by(&:id).should == TaggableModel.skills("ruby").sort_by(&:id)
+    TaggableModel.tagged_with(["ruby", "rails", "css"], :on => :skills).sort_by(&:id).should == TaggableModel.skills("ruby", "rails", "css").sort_by(&:id)
+    TaggableModel.skills("ruby", "rails").should have(2).items
+  end
+
+  describe "Tag Scope" do
+    it "should proxy argument from tag scope to tagged_with" do
+      { ["ruby", "rails", {:any => true}] => [['ruby', 'rails'], {:any => true, :on => :skill}],
+        ["ruby", "rails"] => [['ruby', 'rails'], {:on => :skill}],
+        [] => [[], {:on => :skill}],
+        [["ruby", "rails"]] => [['ruby', 'rails'], {:on => :skill}]
+      }.each do |input, output|
+        TaggableModel.expects(:tagged_with).with(*output)
+        TaggableModel.skills(*input)
+      end
+    end
   end
 
   it "should not care about case" do
@@ -243,7 +256,7 @@ describe Tagtical::Taggable do
     it "should be able to find tagged with any tag" do
       TaggableModel.tagged_with(["ruby", "java"], :order => 'taggable_models.name', :any => true).to_a.should == [@bob, @frank, @steve]
       TaggableModel.tagged_with(["c++", "fitter"], :order => 'taggable_models.name', :any => true).to_a.should == [@bob, @steve]
-      TaggableModel.tagged_with(["depressed", "css"], :order => 'taggable_models.name', :any => true).to_a.should == [@bob, @frank]
+      TaggableModel.tagged_with(["fitter", "css"], :order => 'taggable_models.name', :any => true, :on => :skills).to_a.should == [@bob, @frank]
     end
 
     it "should be able to use named scopes to chain tag finds" do
