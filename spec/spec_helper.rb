@@ -16,8 +16,12 @@ rescue Bundler::GemNotFound
     "Did you run \`bundler install\`?"
 end
 
-Bundler.require
+Bundler.require(:test, :default)
 require File.expand_path('../../lib/tagtical', __FILE__)
+
+RSpec.configure do |config|
+  config.mock_with :mocha
+end
 
 unless [].respond_to?(:freq)
   class Array
