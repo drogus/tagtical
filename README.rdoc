@@ -33,6 +33,7 @@ so I give the user the option to specify the class_name specifically for tagger.
 
 Additions include:
 1. Scopes are created on Tag so you can do photo.tags.color and grab all the tags of type Tag::Color, for example.
+2. Scopes are also created on the Taggable model so you could do Model.colors("red", "blue") and it would return everything tagged with those colors.
 
 == Installation
 
@@ -85,7 +86,7 @@ rake spec:plugins
 
     class User < ActiveRecord::Base
       # Alias for <tt>tagtical :tags</tt>:
-      acts_as_taggable :activities, :interests, :sports # top level :tags is already included.
+      acts_as_taggable :activities, :interests, :sports # top level, generic :tags is already included.
     end
     module Tag
       class Activity < Tagtical::Tag
@@ -149,9 +150,13 @@ of "color". You could define the subclass any of these ways:
     class ColorTag < Tagtical::Tag
     end
 
-This allows for a wide range of folder structures. You could make a directory called "tag" in your
-"app/models" directory and put all these subclasses in there, or you can put it straight in your
-"app/models" directory as "color.rb" or "color_tag.rb".
+This allows for a wide range of folder structures. You could nest files (with corresponding models) like this:
+app/models/tagtical/tag/color.rb
+app/models/tag/color.rb
+app/models/color.rb
+app/models/tagtical/tag/color_tag.rb
+app/models/tag/color_tag.rb
+app/models/color_tag.rb
 
 === Finding Tagged Objects
 
@@ -160,7 +165,7 @@ This way you can mix and match to filter down your results, and it also improves
 compatibility with the will_paginate gem:
 
     class User < ActiveRecord::Base
-      acts_as_taggable :tags
+      acts_as_taggable
       named_scope :by_join_date, :order => "created_at DESC"
     end
 
@@ -204,6 +209,17 @@ to allow for dynamic tag contexts (this could be user generated tag contexts!)
     @user.tags_on(:customs) # => [<Tag value='same'>,...]
     @user.tag_counts_on(:customs)
     User.tagged_with("same", :on => :customs) # => [@user]
+
+In the future, lets say you wanted to add additional methods for these specific tags. You would simply
+just the define the subclass and the code will automatically instantiate it as that class. Just do:
+
+    class CustomTag < Tagtical::Tag
+      def some_custom_function?
+      end
+    end
+
+Now moving forward, these classes will be instantiated with this model. Wow cool!
+
 
 === Tag Ownership
 
@@ -265,6 +281,7 @@ CSS:
 == Contributors
 
 * Aryk Grosz - Original Author
+* Jonathan Nevelson - Taggable Scopes
 
 == Contributors (from the acts_as_taggable_on project)
 

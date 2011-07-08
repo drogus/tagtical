@@ -17,7 +17,7 @@ describe "Tagger" do
     @user.owned_tags.size == 2
   end
 
-  if Tagtical.config[:support_multiple_taggers?]
+  if Tagtical.config.support_multiple_taggers?
     it "should not overlap tags from different taggers" do
       @user2 = TaggableUser.new
       lambda{
@@ -81,7 +81,7 @@ describe "Tagger" do
       lambda {
         @taggable.update_attributes(:tag_list => "")
       }.should change(Tagtical::Tagging, :count).by(-1)
-
+      
       @taggable.tag_list.should == []
       @taggable.all_tags_list.sort.should == %w(ruby scheme).sort
     end

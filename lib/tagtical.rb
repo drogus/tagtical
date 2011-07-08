@@ -13,9 +13,11 @@ module Tagtical
     # If tagger association options were not provided, then use the polymorphic_tagger association.
     hash.reverse_merge!(
       :polymorphic_tagger? => !hash[:tagger], 
-      :support_multiple_taggers? => false # allow multiple taggers for a given tag. Useful
+      :support_multiple_taggers? => false # allow multiple taggers for a given tag.
     )
   end)
+
+
   
 end
 

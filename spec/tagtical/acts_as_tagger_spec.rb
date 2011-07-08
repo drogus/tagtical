@@ -62,34 +62,33 @@ describe "acts_as_tagger" do
         @tagger.tag(@taggable, :with => '', :on => :tags)
         @taggable.tag_list.should == %w(ruby python)
       end
-
+      
     end
-    
+
     describe "when called by multiple tagger's" do
       before(:each) do
         @user_x = TaggableUser.create(:name => "User X")
         @user_y = TaggableUser.create(:name => "User Y")
         @taggable = TaggableModel.create(:name => 'tagtical', :tag_list => 'plugin')
-        
+
         @user_x.tag(@taggable, :with => 'ruby, rails',  :on => :tags)
         @user_y.tag(@taggable, :with => 'ruby, plugin', :on => :tags)
 
         @user_y.tag(@taggable, :with => '', :on => :tags)
         @user_y.tag(@taggable, :with => '', :on => :tags)
       end
-      
-      it "should delete owned tags" do        
+
+      it "should delete owned tags" do
         @user_y.owned_tags.should == []
       end
-      
+
       it "should not delete other taggers tags" do
         @user_x.owned_tags.should have(2).items
       end
-      
+
       it "should not delete original tags" do
         @taggable.all_tags_list_on(:tags).should include('plugin')
       end
     end
   end
-
 end

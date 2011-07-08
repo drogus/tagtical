@@ -77,6 +77,7 @@ module Tagtical::Taggable
       #   User.tagged_with("awesome", "cool", :exclude => true)   # Users that are not tagged with awesome or cool
       #   User.tagged_with("awesome", "cool", :any => true)       # Users that are tagged with awesome or cool
       #   User.tagged_with("awesome", "cool", :match_all => true) # Users that are tagged with just awesome and cool
+      #   User.tagged_with("awesome", "cool", :on => true)        # Users that are tagged with just awesome and cool
       def tagged_with(tags, options = {})
         tag_list = Tagtical::TagList.from(tags)
 
@@ -215,7 +216,7 @@ module Tagtical::Taggable
       def tags_on(context, options={})
         scope = tag_scope(context, options)
         if Tagtical.config.support_multiple_taggers?
-          scope = scope.where("#{ActsAsTaggableOn::Tagging.table_name}.tagger_id IS NULL")
+          scope = scope.where("#{Tagtical::Tagging.table_name}.tagger_id IS NULL")
         end
         scope.all
       end
@@ -249,6 +250,7 @@ module Tagtical::Taggable
           current_tags = tags_on(tag_type, :parents => true)
           old_tags     = current_tags - tags
           new_tags     = tags         - current_tags
+ 
 
           # If relevances are specified on current tags, make sure to update those 
           tags_requiring_relevance_update = tag_value_lookup.map { |tag, value| tag if !value.relevance.nil? }.compact & current_tags

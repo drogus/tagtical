@@ -37,6 +37,7 @@ module Tagtical
       # @param taggable The object that will be tagged
       # @param [Hash] options An hash with options. Available options are:
       #               * <tt>:with</tt> - The tags that you want to
+      #               * <tt>:overwrite</tt> - true if you want to replace the tags with this new list.
       #               * <tt>:on</tt>   - The context on which you want to tag
       #
       # Example:
