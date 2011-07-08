@@ -31,7 +31,7 @@ describe Tagtical::Taggable do
     @taggable.skill_list.sort.should == %w(ruby rails css).sort
     @taggable.tag_list.sort.should == %w(ruby rails css).sort
   end
-  
+
   it "should differentiate between contexts" do
     @taggable.skill_list = "ruby, rails, css"
     @taggable.tag_list = "ruby, bob, charlie"
@@ -57,54 +57,19 @@ describe Tagtical::Taggable do
     @taggables[1].tag_list = "charlie"
     @taggables[0].skill_list = "ruby"
     @taggables[1].skill_list = "css"
+    @taggables[0].craft_list = "knitting"
+    @taggables[1].craft_list = "pottery"
     @taggables.each(&:save!)
 
-    @found_taggables_by_tag   = TaggableModel.joins(:tags).where(:tags => {:value => ["bob"]})
-    @found_taggables_by_tag_from_skills   = TaggableModel.joins(:tags).where(:tags => {:value => ["ruby"]})
-    @found_taggables_by_skill = TaggableModel.joins(:skills).where(:tags => {:value => ["ruby"]})
-    @found_taggables_by_tag.should == [@taggables[0]]
-    @found_taggables_by_skill.should == [@taggables[0]]
-    @found_taggables_by_tag_from_skills.should == [@taggables[0]]
-  end
-
-  it "should be able to find by tag" do
-    @taggable.skill_list = "ruby, rails, css"
-    @taggable.save
-
-    TaggableModel.tagged_with("ruby").first.should == @taggable
-  end
-
-  it "should be able to find by tag with context" do
-    @taggable.skill_list = "ruby, rails, css"
-    @taggable.tag_list = "bob, charlie"
-    @taggable.save
-
-    TaggableModel.tagged_with("ruby").first.should == @taggable
-    TaggableModel.tagged_with("ruby, css").first.should == @taggable
-    TaggableModel.tagged_with("bob", :on => :skills).first.should_not == @taggable
-    TaggableModel.tagged_with("bob", :on => :tags).first.should == @taggable
-  end
-
-  it "should be able to search by tag type" do
-    TaggableModel.create!(:name => "Ted", :skill_list => "ruby")
-    TaggableModel.create!(:name => "Tom", :skill_list => "ruby, rails, css")
-    TaggableModel.create!(:name => "Fiona", :skill_list => "html, ruby, rails, css")
-
-    TaggableModel.tagged_with("ruby", :on => :skills).sort_by(&:id).should == TaggableModel.skills("ruby").sort_by(&:id)
-    TaggableModel.tagged_with(["ruby", "rails", "css"], :on => :skills).sort_by(&:id).should == TaggableModel.skills("ruby", "rails", "css").sort_by(&:id)
-    TaggableModel.skills("ruby", "rails").should have(2).items
-  end
-
-  describe "Tag Scope" do
-    it "should proxy argument from tag scope to tagged_with" do
-      { ["ruby", "rails", {:any => true}] => [['ruby', 'rails'], {:any => true, :on => :skill}],
-        ["ruby", "rails"] => [['ruby', 'rails'], {:on => :skill}],
-        [] => [[], {:on => :skill}],
-        [["ruby", "rails"]] => [['ruby', 'rails'], {:on => :skill}]
-      }.each do |input, output|
-        TaggableModel.expects(:tagged_with).with(*output)
-        TaggableModel.skills(*input)
-      end
+    TaggableModel.tags("bob").should == [@taggables[0]]
+    TaggableModel.skills("ruby").should == [@taggables[0]]
+    TaggableModel.tags("ruby").should == [@taggables[0]]
+    TaggableModel.skills("knitting").should == [@taggables[0]]
+    TaggableModel.skills("knitting", :only => :current).should == []
+    TaggableModel.skills("knitting", :only => :parents).should == []
+    TaggableModel.tags("bob", :only => :current).should == [@taggables[0]]
+    TaggableModel.skills("bob", :only => :parents).should == [@taggables[0]]
+    TaggableModel.crafts("knitting").should == [@taggables[0]]
     end
   end
 
@@ -175,9 +140,9 @@ describe Tagtical::Taggable do
     end
 
   end
-  
+
   context "with multiple taggable models" do
-    
+
     before do
       @bob = TaggableModel.create(:name => "Bob", :tag_list => "ruby, rails, css")
       @frank = TaggableModel.create(:name => "Frank", :tag_list => "ruby, rails")
@@ -267,7 +232,7 @@ describe Tagtical::Taggable do
       TaggableModel.tagged_with('rails').tagged_with('happier', :on => :tags).to_a.should == [@bob]
     end
   end
-  
+
   it "should be able to find tagged with only the matching tags" do
     bob = TaggableModel.create(:name => "Bob", :tag_list => "lazy, happier")
     frank = TaggableModel.create(:name => "Frank", :tag_list => "fitter, happier, inefficient")
