@@ -69,10 +69,10 @@ module Tagtical::Taggable
         tag_types.sort_by(&:active_record_sti_level).each do |tag_type|
           cached_owned_tag_list_on(tag_type).each do |owner, tag_list|
             # Find existing tags or create non-existing tags:
-            tag_value_lookup = tag_type.scoped(:find_or_create_tags, tag_list)
+            tag_value_lookup = tag_type.scoping { find_or_create_tags(tag_list) }
             tags = tag_value_lookup.keys
 
-            owned_tags = owner_tags_on(owner, tag_type, :parents => true)
+            owned_tags = owner_tags_on(owner, tag_type, :only => [:current, :parents, :children])
             old_tags   = owned_tags - tags
             new_tags   = tags       - owned_tags
 

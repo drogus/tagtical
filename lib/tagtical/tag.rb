@@ -60,7 +60,7 @@ module Tagtical
 
       def sti_name
         return @sti_name if instance_variable_defined?(:@sti_name)
-        @sti_name = Tagtical::Tag==self ? nil : Type.new(name.demodulize)
+        @sti_name = Tagtical::Tag==self ? nil : Type.new(name.demodulize).to_sti_name
       end
 
       protected
@@ -159,28 +159,50 @@ module Tagtical
         alias :[] :find
       end
 
+      # The STI name for the Tag model is the same as the tag type.
+      def to_sti_name
+        self
+      end
+
       # Leverages current type_condition logic from ActiveRecord while also allowing for type conditions
       # when no Tag subclass is defined. Also, it builds the type condition for STI inheritance.
       #
       # Options:
-      #   <tt>parents</tt> - Set to true to include the parents type condition. Set to :only to return a scope with only the parent type condition.
       #   <tt>sql</tt> - Set to true to return sql string. Set to :append to return a sql string which can be appended as a condition.
+      #   <tt>only</tt> - An array of the following: :parents, :current, :children. Will construct conditions to query the current, parent, and/or children STI classes.
       #
       def finder_type_condition(options={})
-        sti_column = Tagtical::Tag.arel_table[Tagtical::Tag.inheritance_column]
-        condition = if klass
-            klass.send(:type_condition) if klass.finder_needs_type_condition?
-          else # else do a match only the type itself (ie tags.type = "special")
-            sti_column.eq(self)
-          end unless options[:parents]==:only
-        if options[:parents] && klass # include searches up the STI chain
+        only = Array.wrap(options[:only] || (klass ? [:current, :children] : :current))
+
+        # If we want [:current, :children] or [:current, :children, :parents] and we don't need the finder type condition,
+        # then that means we don't need a condition at all since we are at the top-level sti class and we are essentially
+        # searching the whole range of sti classes.
+        if klass && !klass.finder_needs_type_condition?
+          only.delete(:parents) # we are at the topmost level.
+          only = [] if only==[:current, :children] # no condition is required if we want the current AND the children.
+        end
+
+        sti_names = []
+        if only.include?(:current)
+          sti_names << (klass ? klass.sti_name : to_sti_name)
+        end
+        if only.include?(:children) && klass
+          sti_names.concat(klass.descendants.map(&:sti_name))
+        end
+        if only.include?(:parents) && klass # include searches up the STI chain
           parent_class = klass.superclass
           while parent_class <= Tagtical::Tag
-            type_condition = sti_column.eq(parent_class.sti_name)
-            condition = condition ? condition.or(type_condition) : type_condition
+            sti_names << parent_class.sti_name
             parent_class = parent_class.superclass
           end
         end
+
+        sti_column = Tagtical::Tag.arel_table[Tagtical::Tag.inheritance_column]
+        condition = sti_names.inject(nil) do |conds, sti_name|
+          cond = sti_column.eq(sti_name)
+          conds.nil? ? cond : conds.or(cond)
+        end
+        
         if condition && options[:sql]
           condition = condition.to_sql
           condition.insert(0, " AND ") if options[:sql]==:append
@@ -188,25 +210,21 @@ module Tagtical
         condition
       end
 
-      def scoping
-        if finder_type_condition
-          Tagtical::Tag.send(:with_scope, :find => Tagtical::Tag.where(finder_type_condition), :create => {:type => self}) do
-            yield
+      def scoping(options={}, &block)
+        finder_type_condition = finder_type_condition(options)
+        if block_given?
+          if finder_type_condition
+            Tagtical::Tag.send(:with_scope, :find => Tagtical::Tag.where(finder_type_condition), :create => {:type => self}) do
+              Tagtical::Tag.instance_exec(&block)
+            end
+          else
+            Tagtical::Tag.instance_exec(&block)
           end
-        else
-          yield
-        end
-      end
-
-      # Creates AR Relation Object to query
-      def scoped(method_name=nil, *args, &block)
-        if method_name # by passing in the method_name, we can create a scoping with a :create scope
-          scoping { Tagtical::Tag.send(method_name, *args, &block) }
         else
           Tagtical::Tag.send(*(finder_type_condition ? [:where, finder_type_condition] : :unscoped))
         end
       end
-
+      
       # Return the Tag subclass
       def klass
         instance_variable_get(:@klass) || instance_variable_set(:@klass, find_tag_class)

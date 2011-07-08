@@ -14,20 +14,18 @@ module Tagtical::Taggable
     module ClassMethods
       def initialize_tagtical_core
         has_many :taggings, :as => :taggable, :dependent => :destroy, :include => :tag, :class_name => "Tagtical::Tagging"
+        has_many :tags, :through => :taggings, :source => :tag, :class_name => "Tagtical::Tag",
+                 :select     => "#{Tagtical::Tag.table_name}.*, #{Tagtical::Tagging.table_name}.relevance" # include the relevance on the tags
 
         tag_types.each do |tag_type| # has_many :tags gets created here
-          
-           # It's important to define both the a has_many association (ie has_many :skills) and also
-           # the scope as well so we flexibility in its usage (ie taggable.tags.skills). We could use
-           # delegate, but then we lose the AssociationCollection methods (ie <<, create, etc)
 
-          has_many tag_type.has_many_name, :through => :taggings, :source => :tag, :class_name => "Tagtical::Tag",
-                   :select     => "#{Tagtical::Tag.table_name}.*, #{Tagtical::Tagging.table_name}.relevance", # include the relevance on the tags
-                   :conditions => %{#{Tagtical::Tag.table_name}.id = #{Tagtical::Tagging.table_name}.tag_id#{tag_type.finder_type_condition(:sql => :append)}}
+          # Aryk: Instead of defined multiple associations for the different types of tags, I decided
+          # to define the main associations (tags and taggings) and use AR scope's to build off of them.
 
           # In the case of the base tag type, it will just use the :tags association defined above.
           unless tag_type.base?
-            Tagtical::Tag.scope(tag_type.scope_name, tag_type.scoped)
+            Tagtical::Tag.scope(tag_type.scope_name, Proc.new { |options| tag_type.scoping(options || {}) }) unless Tagtical::Tag.respond_to?(tag_type.scope_name)
+            delegate tag_type.has_many_name, :to => :tags
           end
 
           class_eval <<-RUBY, __FILE__, __LINE__ + 1
@@ -76,17 +74,18 @@ module Tagtical::Taggable
       #   User.tagged_with("awesome", "cool", :exclude => true)   # Users that are not tagged with awesome or cool
       #   User.tagged_with("awesome", "cool", :any => true)       # Users that are tagged with awesome or cool
       #   User.tagged_with("awesome", "cool", :match_all => true) # Users that are tagged with just awesome and cool
-      #   User.tagged_with("awesome", "cool", :on => true)        # Users that are tagged with just awesome and cool
+      #   User.tagged_with("awesome", "cool", :on => :skills)     # Users that are tagged with just awesome and cool on skills
       def tagged_with(tags, options = {})
         tag_list = Tagtical::TagList.from(tags)
-
-        return {} if tag_list.empty?
+        return scoped(:conditions => "1 = 0") if tag_list.empty? && !options[:exclude]
 
         joins = []
         conditions = []
 
         options[:on] ||= Tagtical::Tag::Type::BASE
         tag_type = Tagtical::Tag::Type.find(options.delete(:on))
+        finder_type_condition_options = options.extract!(:only)
+
         tag_table, tagging_table = Tagtical::Tag.table_name, Tagtical::Tagging.table_name
 
         if options.delete(:exclude)
@@ -100,12 +99,13 @@ module Tagtical::Taggable
           conditions << tag_list.to_sql_conditions(:operator => "LIKE")
 
           tagging_join  = " JOIN #{tagging_table}" +
-                          "   ON #{tagging_table}.taggable_id = #{table_name}.#{primary_key}" +
-                          "  AND #{tagging_table}.taggable_type = #{quote_value(base_class.name)}" +
-                          " JOIN #{tag_table}" +
-                          "   ON #{tagging_table}.tag_id = #{tag_table}.id"
+            "   ON #{tagging_table}.taggable_id = #{table_name}.#{primary_key}" +
+            "  AND #{tagging_table}.taggable_type = #{quote_value(base_class.name)}" +
+            " JOIN #{tag_table}" +
+            "   ON #{tagging_table}.tag_id = #{tag_table}.id"
 
-          if (finder_condition = tag_type.finder_type_condition(:sql => true)).present?
+
+          if (finder_condition = tag_type.finder_type_condition(finder_type_condition_options.update(:sql => true))).present?
             conditions << finder_condition
           end
 
@@ -114,7 +114,7 @@ module Tagtical::Taggable
           joins << tagging_join
 
         else
-          tags_by_value = tag_type.scoped.where_any_like(tag_list).group_by(&:value)
+          tags_by_value = tag_type.scoping(finder_type_condition_options).where_any_like(tag_list).group_by(&:value)
           return scoped(:conditions => "1 = 0") unless tags_by_value.length == tag_list.length # allow for chaining
 
           # Create only one join per tag value.
@@ -139,14 +139,14 @@ module Tagtical::Taggable
 
         if options.delete(:match_all)
           joins << "LEFT OUTER JOIN #{tagging_table} #{taggings_alias}" +
-                   "  ON #{taggings_alias}.taggable_id = #{table_name}.#{primary_key}" +
-                   " AND #{taggings_alias}.taggable_type = #{quote_value(base_class.name)}"
+            "  ON #{taggings_alias}.taggable_id = #{table_name}.#{primary_key}" +
+            " AND #{taggings_alias}.taggable_type = #{quote_value(base_class.name)}"
 
 
           group_columns = Tagtical::Tag.using_postgresql? ? grouped_column_names_for(self) : "#{table_name}.#{primary_key}"
           group = "#{group_columns} HAVING COUNT(#{taggings_alias}.taggable_id) = #{tag_list.size}"
         end
-
+      
         scoped(:select     => select_clause,
                :joins      => joins.join(" "),
                :group      => group,
@@ -241,10 +241,10 @@ module Tagtical::Taggable
           tag_list = tag_list_cache_on(tag_type).uniq
 
           # Find existing tags or create non-existing tags:
-          tag_value_lookup = tag_type.scoped(:find_or_create_tags, tag_list)
+          tag_value_lookup = tag_type.scoping { find_or_create_tags(tag_list) }
           tags = tag_value_lookup.keys
 
-          current_tags = tags_on(tag_type, :parents => true)
+          current_tags = tags_on(tag_type, :only => [:current, :parents, :children])
           old_tags     = current_tags - tags
           new_tags     = tags         - current_tags
 
