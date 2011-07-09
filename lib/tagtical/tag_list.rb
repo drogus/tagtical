@@ -107,7 +107,7 @@ module Tagtical
     def clean!
       reject!(&:blank?)
       each(&:strip!)
-      uniq!
+      uniq!(&:downcase)
     end
 
     def extract_and_apply_options!(args)
