@@ -100,6 +100,12 @@ describe Tagtical::Taggable do
     TaggableModel.skills("ruby", "rails").should have(2).items
   end
 
+  it "should not duplicate tags" do
+    @taggable = TaggableModel.create!(:name => "Gary", :skill_list => ["Ruby", "ruby", "RUBY", "rails"])
+    
+    @taggable.skill_list.should have(2).item
+  end
+
   describe "Tag Scope" do
     it "should proxy argument from tag scope to tagged_with" do
       { ["ruby", "rails", {:any => true}] => [['ruby', 'rails'], {:any => true, :on => :skill}],
