@@ -64,6 +64,7 @@ describe Tagtical::Taggable do
     TaggableModel.with_tags("bob").should == [@taggables[0]]
     TaggableModel.with_skills("ruby").should == [@taggables[0]]
     TaggableModel.with_tags("ruby").should == [@taggables[0]]
+    TaggableModel.with_tags("ruby", :only => :current).should == []
     TaggableModel.with_skills("knitting").should == [@taggables[0]]
     TaggableModel.with_skills("knitting", :only => :current).should == []
     TaggableModel.with_skills("knitting", :only => :parents).should == []
