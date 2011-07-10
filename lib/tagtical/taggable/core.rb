@@ -15,12 +15,13 @@ module Tagtical::Taggable
       def initialize_tagtical_core
         has_many :taggings, :as => :taggable, :dependent => :destroy, :include => :tag, :class_name => "Tagtical::Tagging"
         has_many :tags, :through => :taggings, :source => :tag, :class_name => "Tagtical::Tag",
-                 :select     => "#{Tagtical::Tag.table_name}.*, #{Tagtical::Tagging.table_name}.relevance" # include the relevance on the tags
+                 :select => "#{Tagtical::Tag.table_name}.*, #{Tagtical::Tagging.table_name}.relevance" # include the relevance on the tags
 
         tag_types.each do |tag_type| # has_many :tags gets created here
 
           # Aryk: Instead of defined multiple associations for the different types of tags, I decided
           # to define the main associations (tags and taggings) and use AR scope's to build off of them.
+          # This keeps your reflections cleaner.
 
           # In the case of the base tag type, it will just use the :tags association defined above.
           unless tag_type.base?
@@ -29,7 +30,7 @@ module Tagtical::Taggable
           end
 
           class_eval <<-RUBY, __FILE__, __LINE__ + 1
-            def self.#{tag_type.pluralize}(*tags)
+            def self.with_#{tag_type.pluralize}(*tags)
               options = tags.extract_options!
               tagged_with(tags.flatten, options.merge(:on => :#{tag_type}))
             end
@@ -105,7 +106,7 @@ module Tagtical::Taggable
             "   ON #{tagging_table}.tag_id = #{tag_table}.id"
 
 
-          if (finder_condition = tag_type.finder_type_condition(finder_type_condition_options.update(:sql => true))).present?
+          if (finder_condition = tag_type.finder_type_condition(finder_type_condition_options.merge(:sql => true))).present?
             conditions << finder_condition
           end
 

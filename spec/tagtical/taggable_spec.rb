@@ -31,7 +31,7 @@ describe Tagtical::Taggable do
     @taggable.skill_list.sort.should == %w(ruby rails css).sort
     @taggable.tag_list.sort.should == %w(ruby rails css).sort
   end
-  
+
   it "should differentiate between contexts" do
     @taggable.skill_list = "ruby, rails, css"
     @taggable.tag_list = "ruby, bob, charlie"
@@ -61,15 +61,15 @@ describe Tagtical::Taggable do
     @taggables[1].craft_list = "pottery"
     @taggables.each(&:save!)
 
-    TaggableModel.tags("bob").should == [@taggables[0]]
-    TaggableModel.skills("ruby").should == [@taggables[0]]
-    TaggableModel.tags("ruby").should == [@taggables[0]]
-    TaggableModel.skills("knitting").should == [@taggables[0]]
-    TaggableModel.skills("knitting", :only => :current).should == []
-    TaggableModel.skills("knitting", :only => :parents).should == []
-    TaggableModel.tags("bob", :only => :current).should == [@taggables[0]]
-    TaggableModel.skills("bob", :only => :parents).should == [@taggables[0]]
-    TaggableModel.crafts("knitting").should == [@taggables[0]]
+    TaggableModel.with_tags("bob").should == [@taggables[0]]
+    TaggableModel.with_skills("ruby").should == [@taggables[0]]
+    TaggableModel.with_tags("ruby").should == [@taggables[0]]
+    TaggableModel.with_skills("knitting").should == [@taggables[0]]
+    TaggableModel.with_skills("knitting", :only => :current).should == []
+    TaggableModel.with_skills("knitting", :only => :parents).should == []
+    TaggableModel.with_tags("bob", :only => :current).should == [@taggables[0]]
+    TaggableModel.with_skills("bob", :only => :parents).should == [@taggables[0]]
+    TaggableModel.with_crafts("knitting").should == [@taggables[0]]
   end
 
   it "should be able to find by tag" do
@@ -95,14 +95,14 @@ describe Tagtical::Taggable do
     TaggableModel.create!(:name => "Tom", :skill_list => "ruby, rails, css")
     TaggableModel.create!(:name => "Fiona", :skill_list => "html, ruby, rails, css")
 
-    TaggableModel.tagged_with("ruby", :on => :skills).sort_by(&:id).should == TaggableModel.skills("ruby").sort_by(&:id)
-    TaggableModel.tagged_with(["ruby", "rails", "css"], :on => :skills).sort_by(&:id).should == TaggableModel.skills("ruby", "rails", "css").sort_by(&:id)
-    TaggableModel.skills("ruby", "rails").should have(2).items
+    TaggableModel.tagged_with("ruby", :on => :skills).sort_by(&:id).should == TaggableModel.with_skills("ruby").sort_by(&:id)
+    TaggableModel.tagged_with(["ruby", "rails", "css"], :on => :skills).sort_by(&:id).should == TaggableModel.with_skills("ruby", "rails", "css").sort_by(&:id)
+    TaggableModel.with_skills("ruby", "rails").should have(2).items
   end
 
   it "should not duplicate tags" do
     @taggable = TaggableModel.create!(:name => "Gary", :skill_list => ["Ruby", "ruby", "RUBY", "rails"])
-    
+
     @taggable.skill_list.should have(2).item
   end
 
@@ -114,7 +114,7 @@ describe Tagtical::Taggable do
         [["ruby", "rails"]] => [['ruby', 'rails'], {:on => :skill}]
       }.each do |input, output|
         TaggableModel.expects(:tagged_with).with(*output)
-        TaggableModel.skills(*input)
+        TaggableModel.with_skills(*input)
       end
     end
   end
@@ -178,7 +178,7 @@ describe Tagtical::Taggable do
         @taggable.reload
         @taggable.craft_list = "pottery"
         @taggable.save!
-       }.should change(Tagtical::Tagging, :count).by(1)
+      }.should change(Tagtical::Tagging, :count).by(1)
 
       @taggable.reload
       @taggable.skills.should have(1).item
@@ -186,9 +186,9 @@ describe Tagtical::Taggable do
     end
 
   end
-  
+
   context "with multiple taggable models" do
-    
+
     before do
       @bob = TaggableModel.create(:name => "Bob", :tag_list => "ruby, rails, css")
       @frank = TaggableModel.create(:name => "Frank", :tag_list => "ruby, rails")
@@ -203,34 +203,34 @@ describe Tagtical::Taggable do
         breakdown(actual) == expected
       end
       failure_message_for_should do |actual|
-         "expected #{breakdown(actual)} to have the breakdown #{expected}"
+        "expected #{breakdown(actual)} to have the breakdown #{expected}"
       end
     end
 
     it "should be able to get scoped tag counts" do
       TaggableModel.tagged_with("ruby").tag_counts(:order => 'tags.id').should have_tags_counts_of [
-        [Tagtical::Tag, "ruby", 2],
-        [Tagtical::Tag, "rails", 2],
-        [Tagtical::Tag, "css", 1],
-        [Tag::Skill, "ruby", 1],
-        [Tag::Skill, "java", 1] ]
+                                                                                                     [Tagtical::Tag, "ruby", 2],
+                                                                                                     [Tagtical::Tag, "rails", 2],
+                                                                                                     [Tagtical::Tag, "css", 1],
+                                                                                                     [Tag::Skill, "ruby", 1],
+                                                                                                     [Tag::Skill, "java", 1] ]
       TaggableModel.tagged_with("ruby").skill_counts.first.count.should == 1 # ruby
     end
 
     it "should be able to get all scoped tag counts" do
       TaggableModel.tagged_with("ruby").all_tag_counts(:order => 'tags.id').should have_tags_counts_of [
-        [Tagtical::Tag, "ruby", 2],
-        [Tagtical::Tag, "rails", 2],
-        [Tagtical::Tag, "css", 1],
-        [Tag::Skill, "ruby", 1],
-        [Tag::Skill, "java", 1] ]
+                                                                                                         [Tagtical::Tag, "ruby", 2],
+                                                                                                         [Tagtical::Tag, "rails", 2],
+                                                                                                         [Tagtical::Tag, "css", 1],
+                                                                                                         [Tag::Skill, "ruby", 1],
+                                                                                                         [Tag::Skill, "java", 1] ]
     end
 
     it 'should only return tag counts for the available scope' do
       TaggableModel.tagged_with('rails').all_tag_counts.should have_tags_counts_of [
-        [Tagtical::Tag, "ruby", 2],
-        [Tagtical::Tag, "rails", 2],
-        [Tagtical::Tag, "css", 1]]
+                                                                                     [Tagtical::Tag, "ruby", 2],
+                                                                                     [Tagtical::Tag, "rails", 2],
+                                                                                     [Tagtical::Tag, "css", 1]]
       TaggableModel.tagged_with('rails').all_tag_counts.any? { |tag| tag.value == 'java' }.should be_false
 
       # Test specific join syntaxes:
@@ -278,7 +278,7 @@ describe Tagtical::Taggable do
       TaggableModel.tagged_with('rails').tagged_with('happier', :on => :tags).to_a.should == [@bob]
     end
   end
-  
+
   it "should be able to find tagged with only the matching tags" do
     bob = TaggableModel.create(:name => "Bob", :tag_list => "lazy, happier")
     frank = TaggableModel.create(:name => "Frank", :tag_list => "fitter, happier, inefficient")
