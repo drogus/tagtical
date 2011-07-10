@@ -1,8 +1,3 @@
-
-require 'yaml'
-    require 'psych'
-    YAML::ENGINE.yamler = 'syck'
-
 require "active_record"
 require "action_view"
 require "active_support/hash_with_indifferent_access"

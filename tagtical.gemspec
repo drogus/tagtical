@@ -48,7 +48,6 @@ Gem::Specification.new do |s|
     "spec/models.rb",
     "spec/schema.rb",
     "spec/spec_helper.rb",
-    "spec/tagtical/acts_as_taggable_on.sqlite3",
     "spec/tagtical/acts_as_tagger_spec.rb",
     "spec/tagtical/tag_list_spec.rb",
     "spec/tagtical/tag_spec.rb",
@@ -67,23 +66,17 @@ Gem::Specification.new do |s|
     s.specification_version = 3
 
     if Gem::Version.new(Gem::VERSION) >= Gem::Version.new('1.2.0') then
-      s.add_runtime_dependency(%q<rails>, ["= 3.0.5"])
-      s.add_runtime_dependency(%q<rspec>, ["= 2.6.0"])
       s.add_runtime_dependency(%q<sqlite3-ruby>, [">= 0"])
       s.add_runtime_dependency(%q<mysql>, [">= 0"])
       s.add_runtime_dependency(%q<jeweler>, [">= 0"])
       s.add_runtime_dependency(%q<rcov>, [">= 0"])
     else
-      s.add_dependency(%q<rails>, ["= 3.0.5"])
-      s.add_dependency(%q<rspec>, ["= 2.6.0"])
       s.add_dependency(%q<sqlite3-ruby>, [">= 0"])
       s.add_dependency(%q<mysql>, [">= 0"])
       s.add_dependency(%q<jeweler>, [">= 0"])
       s.add_dependency(%q<rcov>, [">= 0"])
     end
   else
-    s.add_dependency(%q<rails>, ["= 3.0.5"])
-    s.add_dependency(%q<rspec>, ["= 2.6.0"])
     s.add_dependency(%q<sqlite3-ruby>, [">= 0"])
     s.add_dependency(%q<mysql>, [">= 0"])
     s.add_dependency(%q<jeweler>, [">= 0"])
