@@ -5,11 +5,11 @@
 
 Gem::Specification.new do |s|
   s.name = %q{tagtical}
-  s.version = "1.0.4"
+  s.version = "0.0.1"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
-  s.authors = [%q{Aryk Grosz}]
-  s.date = %q{2011-07-06}
+  s.authors = ["Aryk Grosz"]
+  s.date = %q{2011-07-10}
   s.description = %q{Tagtical allows you do create subclasses for Tag and add additional functionality in an STI fashion. For example. You could do Tag::Color.find_by_name('blue').to_rgb. It also supports storing weights or relevance on the taggings.}
   s.email = %q{aryk@mixbook.com}
   s.extra_rdoc_files = [
@@ -48,6 +48,7 @@ Gem::Specification.new do |s|
     "spec/models.rb",
     "spec/schema.rb",
     "spec/spec_helper.rb",
+    "spec/tagtical/acts_as_taggable_on.sqlite3",
     "spec/tagtical/acts_as_tagger_spec.rb",
     "spec/tagtical/tag_list_spec.rb",
     "spec/tagtical/tag_spec.rb",
@@ -58,8 +59,8 @@ Gem::Specification.new do |s|
     "spec/tagtical/tagtical_spec.rb"
   ]
   s.homepage = %q{https://github.com/Mixbook/tagtical}
-  s.require_paths = [%q{lib}]
-  s.rubygems_version = %q{1.8.5}
+  s.require_paths = ["lib"]
+  s.rubygems_version = %q{1.6.2}
   s.summary = %q{Tagtical is a tagging plugin for Rails that provides weighting, contexts, and inheritance for tags.}
 
   if s.respond_to? :specification_version then
