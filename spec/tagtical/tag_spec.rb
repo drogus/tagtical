@@ -57,6 +57,22 @@ describe Tagtical::Tag do
 
   end
 
+  describe "tag scopes" do
+    before do
+      Tagtical::Tag.create(:value => "Plane")
+      Tag::Skill.create(:value => "Kung Fu")
+      Tag::Craft.create(:value => "Painting")
+      NeedTag.create(:value => "chair") 
+    end
+
+    it "should retrieve tags finder type conditions" do
+      Tagtical::Tag.skills.should have_tag_values ["Kung Fu", "Painting"]
+      Tagtical::Tag.skills(:only => :current).should have_tag_values ["Kung Fu"]
+      Tagtical::Tag.crafts(:only => :parents).should have_tag_values ["Kung Fu", "Plane"]
+    end
+
+  end
+
   describe "#dump_value" do
     before do
       @tag = Tagtical::Tag::PartTag.new(:value => "FOO")

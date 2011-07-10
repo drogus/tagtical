@@ -25,23 +25,21 @@ You can choose to extend the Tag class at a later time.
 4. Tag "name" now becomes tag "value". The difference is small, but significant. If you had
 GeoTag's, for example, you wouldn't refer to its "name", you would refer to its "value". The value
 could be a serialized field of long and lat if you wanted.
-5. Add ability to not have multiple taggers for a given tag. In other words, you can specify in a
-config file whether a taggable model can have the same tags from multiple different taggers.
-6. Support a config/tagtical.yml to further configure the application. For example, since most people
+5. Support a config/tagtical.yml to further configure the application. For example, since most people
 usually have one User class for their application, there is no reason to do polymorphic on "tagger",
 so I give the user the option to specify the class_name specifically for tagger.
 
 Additions include:
 1. Scopes are created on Tag so you can do photo.tags.color and grab all the tags of type Tag::Color, for example.
-2. Scopes are also created on the Taggable model so you could do Model.colors("red", "blue") and it would return everything tagged with those colors.
+2. Scopes are also created on the Taggable model so you could do Model.with_colors("red", "blue") and it would return everything tagged with those colors.
 
 == Installation
 
 === Rails & Ruby Versions
 
-Tagtical is not tested to work with Rails < 3.05 and Ruby < 1.9.2
+Tagtical was developed on Rails 3.05 and Ruby 1.9.2
 
-It can probably work with older versions with very little work.
+It can probably work with older versions, but would take a few tweaks.
 
 ==== Plugin
 
@@ -117,6 +115,8 @@ rake spec:plugins
     @user.save
 
     @user.activities # => [<Tag::Activity value:"joking">,<Tag::Activity value:"clowning">,<Tag::Sport value:"boxing">]
+    @user.activities(:only => :children) # => [<Tag::Sport value:"boxing">] - look at only the STI subclasses
+    @user.activities(:only => :current) # => [<Tag::Activity value:"joking">,<Tag::Activity value:"clowning">] - look at only the current STI class
     @user.activities.first.athletic? # => false
     @user.sports.all(&:ball?) # => true
 
@@ -211,10 +211,10 @@ to allow for dynamic tag contexts (this could be user generated tag contexts!)
     User.tagged_with("same", :on => :customs) # => [@user]
 
 In the future, lets say you wanted to add additional methods for these specific tags. You would simply
-just the define the subclass and the code will automatically instantiate it as that class. Just do:
+just define the subclass and the code will automatically instantiate it as that class. Just do:
 
     class CustomTag < Tagtical::Tag
-      def some_custom_function?
+      def some_custom_function
       end
     end
 

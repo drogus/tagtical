@@ -23,6 +23,12 @@ RSpec.configure do |config|
   config.mock_with :mocha
 end
 
+RSpec::Matchers.define :have_tag_values do |expected|
+  match do |actual|
+    actual.map(&:value).sort == expected.sort
+  end
+end
+
 unless [].respond_to?(:freq)
   class Array
     def freq
@@ -62,7 +68,6 @@ def clean_database!
 end
 
 clean_database!
-
 
 module QueryAnalyzer
   extend self

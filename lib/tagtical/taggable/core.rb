@@ -32,12 +32,11 @@ module Tagtical::Taggable
           #   taggable_model.tags(:only => :children)
           #   taggable_model.tags <-- still works like normal has_many
           #   taggable_model.tags(true, :only => :current) <-- reloads the tags association and appends scope for only current type.
-          if tag_type.base?
+          if tag_type.has_many_name==:tags
             define_method("tags_with_finder_type_options") do |*args|
               options = args.pop if args.last.is_a?(Hash)
               scope = tags_without_finder_type_options(*args)
-              scope = scope.tags(options) if options
-              scope
+              options ? scope.tags(options) : scope
             end
             alias_method_chain :tags, :finder_type_options
           else
