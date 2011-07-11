@@ -64,35 +64,35 @@ describe Tagtical::Taggable do
     end
 
     it "should be able to query tags" do
-      @taggables[0].tags(:only => :current).should have_tag_values %w{bob}
-      @taggables[0].tags(:only => :==).should have_tag_values %w{bob}
+      @taggables[0].tags(:type => :current).should have_tag_values %w{bob}
+      @taggables[0].tags(:type => :==).should have_tag_values %w{bob}
       @taggables[0].tags.should have_tag_values %w{bob knitting ruby}
-      @taggables[0].tags(:only => :children).should have_tag_values %w{knitting ruby}
-      @taggables[0].tags(:only => :<).should have_tag_values %w{knitting ruby}
-      @taggables[1].crafts(:only => :parents).should have_tag_values %w{charlie css}
-      @taggables[1].crafts(:only => :>).should have_tag_values %w{charlie css}
+      @taggables[0].tags(:type => :children).should have_tag_values %w{knitting ruby}
+      @taggables[0].tags(:type => :<).should have_tag_values %w{knitting ruby}
+      @taggables[1].crafts(:type => :parents).should have_tag_values %w{charlie css}
+      @taggables[1].crafts(:type => :>).should have_tag_values %w{charlie css}
 
-      @taggables[1].crafts(:only => [:parents, :current]).should have_tag_values %w{charlie css pottery}
-      @taggables[1].crafts(:only => :>=).should have_tag_values %w{charlie css pottery}
-      @taggables[1].skills(:only => [:parents, :children]).should have_tag_values %w{charlie pottery}
-#      @taggables[1].skills(:only => :!=).should have_tag_values %w{charlie pottery}
+      @taggables[1].crafts(:type => [:parents, :current]).should have_tag_values %w{charlie css pottery}
+      @taggables[1].crafts(:type => :>=).should have_tag_values %w{charlie css pottery}
+      @taggables[1].skills(:type => [:parents, :children]).should have_tag_values %w{charlie pottery}
+#      @taggables[1].skills(:type => :!=).should have_tag_values %w{charlie pottery}
     end
 
     it "should be able to select taggables by subset of tags using ActiveRelation methods" do
       TaggableModel.with_tags("bob").should == [@taggables[0]]
       TaggableModel.with_skills("ruby").should == [@taggables[0]]
       TaggableModel.with_tags("rUBy").should == [@taggables[0]]
-      TaggableModel.with_tags("ruby", :only => :current).should == []
-      TaggableModel.with_tags("ruby", :only => :==).should == []
+      TaggableModel.with_tags("ruby", :type => :current).should == []
+      TaggableModel.with_tags("ruby", :type => :==).should == []
       TaggableModel.with_skills("knitting").should == [@taggables[0]]
-      TaggableModel.with_skills("KNITTING", :only => :current).should == []
-      TaggableModel.with_skills("KNITTING", :only => :==).should == []
-      TaggableModel.with_skills("knitting", :only => :parents).should == []
-      TaggableModel.with_skills("knitting", :only => :>).should == []
-      TaggableModel.with_tags("bob", :only => :current).should == [@taggables[0]]
-      TaggableModel.with_tags("bob", :only => :==).should == [@taggables[0]]
-      TaggableModel.with_skills("bob", :only => :parents).should == [@taggables[0]]
-      TaggableModel.with_skills("bob", :only => :>).should == [@taggables[0]]
+      TaggableModel.with_skills("KNITTING", :type => :current).should == []
+      TaggableModel.with_skills("KNITTING", :type => :==).should == []
+      TaggableModel.with_skills("knitting", :type => :parents).should == []
+      TaggableModel.with_skills("knitting", :type => :>).should == []
+      TaggableModel.with_tags("bob", :type => :current).should == [@taggables[0]]
+      TaggableModel.with_tags("bob", :type => :==).should == [@taggables[0]]
+      TaggableModel.with_skills("bob", :type => :parents).should == [@taggables[0]]
+      TaggableModel.with_skills("bob", :type => :>).should == [@taggables[0]]
       TaggableModel.with_crafts("knitting").should == [@taggables[0]]
     end
   end

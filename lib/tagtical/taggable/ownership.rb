@@ -72,7 +72,7 @@ module Tagtical::Taggable
             tag_value_lookup = tag_type.scoping { find_or_create_tags(tag_list) }
             tags = tag_value_lookup.keys
 
-            owned_tags = owner_tags_on(owner, tag_type, :only => [:current, :parents, :children])
+            owned_tags = owner_tags_on(owner, tag_type, :type => [:current, :parents, :children])
             old_tags   = owned_tags - tags
             new_tags   = tags       - owned_tags
 

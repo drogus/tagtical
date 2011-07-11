@@ -29,9 +29,9 @@ module Tagtical::Taggable
           # If the tag_type is base? (type=="tag"), then we add additional functionality to the AR
           # has_many :tags.
           #
-          #   taggable_model.tags(:only => :children)
+          #   taggable_model.tags(:type => :children)
           #   taggable_model.tags <-- still works like normal has_many
-          #   taggable_model.tags(true, :only => :current) <-- reloads the tags association and appends scope for only current type.
+          #   taggable_model.tags(true, :type => :current) <-- reloads the tags association and appends scope for only current type.
           if tag_type.has_many_name==:tags
             define_method("tags_with_finder_type_options") do |*args|
               options = args.pop if args.last.is_a?(Hash)
@@ -99,7 +99,7 @@ module Tagtical::Taggable
 
         options[:on] ||= Tagtical::Tag::Type::BASE
         tag_type = Tagtical::Tag::Type.find(options.delete(:on))
-        finder_type_condition_options = options.extract!(:only)
+        finder_type_condition_options = options.extract!(:type)
 
         tag_table, tagging_table = Tagtical::Tag.table_name, Tagtical::Tagging.table_name
 
@@ -259,7 +259,7 @@ module Tagtical::Taggable
           tag_value_lookup = tag_type.scoping { find_or_create_tags(tag_list) }
           tags = tag_value_lookup.keys
 
-          current_tags = tags_on(tag_type, :only => [:current, :parents, :children])
+          current_tags = tags_on(tag_type, :type => [:current, :parents, :children])
           old_tags     = current_tags - tags
           new_tags     = tags         - current_tags
 

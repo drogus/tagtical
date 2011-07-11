@@ -173,7 +173,7 @@ module Tagtical
       #
       def finder_type_condition(options={})
 
-        options[:only] = case options[:only]
+        options[:type] = case options[:type]
         when :==
           [:current]
 #        when :!=
@@ -187,27 +187,27 @@ module Tagtical
         when :<
           [:children]
         else
-          options[:only]
+          options[:type]
         end
 
-        only = Array.wrap(options[:only] || (klass ? [:current, :children] : :current))
+        type = Array.wrap(options[:type] || (klass ? [:current, :children] : :current))
 
         # If we want [:current, :children] or [:current, :children, :parents] and we don't need the finder type condition,
         # then that means we don't need a condition at all since we are at the top-level sti class and we are essentially
         # searching the whole range of sti classes.
         if klass && !klass.finder_needs_type_condition?
-          only.delete(:parents) # we are at the topmost level.
-          only = [] if only==[:current, :children] # no condition is required if we want the current AND the children.
+          type.delete(:parents) # we are at the topmost level.
+          type = [] if type==[:current, :children] # no condition is required if we want the current AND the children.
         end
 
         sti_names = []
-        if only.include?(:current)
+        if type.include?(:current)
           sti_names << (klass ? klass.sti_name : to_sti_name)
         end
-        if only.include?(:children) && klass
+        if type.include?(:children) && klass
           sti_names.concat(klass.descendants.map(&:sti_name))
         end
-        if only.include?(:parents) && klass # include searches up the STI chain
+        if type.include?(:parents) && klass # include searches up the STI chain
           parent_class = klass.superclass
           while parent_class <= Tagtical::Tag
             sti_names << parent_class.sti_name

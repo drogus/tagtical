@@ -115,8 +115,11 @@ rake spec:plugins
     @user.save
 
     @user.activities # => [<Tag::Activity value:"joking">,<Tag::Activity value:"clowning">,<Tag::Sport value:"boxing">]
-    @user.activities(:only => :children) # => [<Tag::Sport value:"boxing">] - look at only the STI subclasses
-    @user.activities(:only => :current) # => [<Tag::Activity value:"joking">,<Tag::Activity value:"clowning">] - look at only the current STI class
+    @user.activities(:type => :children) # => [<Tag::Sport value:"boxing">] - look at only the STI subclasses
+    @user.activities(:type => :<) # => [<Tag::Sport value:"boxing">] - look at only the STI subclasses
+    @user.activities(:type => :current) # => [<Tag::Activity value:"joking">,<Tag::Activity value:"clowning">] - look at only the current STI class
+    @user.activities(:type => :==) # => [<Tag::Activity value:"joking">,<Tag::Activity value:"clowning">] - look at only the current STI class
+
     @user.activities.first.athletic? # => false
     @user.sports.all(&:ball?) # => true
 
