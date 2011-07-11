@@ -57,7 +57,7 @@ describe Tagtical::Tag do
 
   end
 
-  describe "tag scopes" do
+  describe "tag scopes Type#finder_type_conditions", :type => "finder" do
     before do
       Tagtical::Tag.create(:value => "Plane")
       Tag::Skill.create(:value => "Kung Fu")
@@ -65,12 +65,51 @@ describe Tagtical::Tag do
       NeedTag.create(:value => "chair") 
     end
 
-    it "should retrieve tags finder type conditions" do
-      Tagtical::Tag.skills.should have_tag_values ["Kung Fu", "Painting"]
-      Tagtical::Tag.skills(:only => :current).should have_tag_values ["Kung Fu"]
-      Tagtical::Tag.crafts(:only => :parents).should have_tag_values ["Kung Fu", "Plane"]
+    context "when :only => :current or the alias :==" do
+      it "should retrieve current STI level tags" do
+        Tagtical::Tag.skills.should have_tag_values ["Kung Fu", "Painting"]
+        Tagtical::Tag.skills(:only => :current).should have_tag_values ["Kung Fu"]
+        Tagtical::Tag.skills(:only => :==).should have_tag_values ["Kung Fu"]
+      end
     end
 
+    context "when :only => :parent or the alias :>" do
+      it "should retrieve parent STI level tags" do
+        Tagtical::Tag.skills.should have_tag_values ["Kung Fu", "Painting"]
+        Tagtical::Tag.crafts(:only => :parents).should have_tag_values ["Kung Fu", "Plane"]
+        Tagtical::Tag.crafts(:only => :>).should have_tag_values ["Kung Fu", "Plane"]
+        Tagtical::Tag.skills(:only => :>).should have_tag_values ["Plane"]
+      end
+    end
+
+    context "when :only => :childern or the alias :<" do
+      it "should retrieve child STI level tags" do
+        Tagtical::Tag.skills.should have_tag_values ["Kung Fu", "Painting"]
+        Tagtical::Tag.skills(:only => :children).should have_tag_values ["Painting"]
+        Tagtical::Tag.skills(:only => :<).should have_tag_values ["Painting"]
+      end
+    end
+
+#    context "when :only => :!=" do
+#      it "should retrieve parent and child STI level tags" do
+#        Tagtical::Tag.skills.should have_tag_values ["Kung Fu", "Painting"]
+#        Tagtical::Tag.skills(:only => :!=).should have_tag_values ["Plane", "Painting"]
+#      end
+#    end
+
+    context "when :only => :>=" do
+      it "should retrieve current and parent STI level tags" do
+        Tagtical::Tag.skills.should have_tag_values ["Kung Fu", "Painting"]
+        Tagtical::Tag.skills(:only => :>=).should have_tag_values ["Kung Fu", "Plane"]
+      end
+    end
+
+    context "when :only => :<=" do
+      it "should retrieve current and child STI level tags" do
+        Tagtical::Tag.skills.should have_tag_values ["Kung Fu", "Painting"]
+        Tagtical::Tag.skills(:only => :<=).should have_tag_values ["Kung Fu", "Painting"]
+      end
+    end
   end
 
   describe "#dump_value" do

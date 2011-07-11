@@ -172,6 +172,24 @@ module Tagtical
       #   <tt>only</tt> - An array of the following: :parents, :current, :children. Will construct conditions to query the current, parent, and/or children STI classes.
       #
       def finder_type_condition(options={})
+
+        options[:only] = case options[:only]
+        when :==
+          [:current]
+#        when :!=
+#          [:parents, :children]
+        when :<=
+          [:current, :children]
+        when :>=
+          [:current, :parents]
+        when :>
+          [:parents]
+        when :<
+          [:children]
+        else
+          options[:only]
+        end
+
         only = Array.wrap(options[:only] || (klass ? [:current, :children] : :current))
 
         # If we want [:current, :children] or [:current, :children, :parents] and we don't need the finder type condition,
