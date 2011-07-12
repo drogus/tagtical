@@ -140,34 +140,6 @@ describe Tagtical::Tag do
     end
   end
 
-  describe "#dump_value" do
-    before do
-      @tag = Tagtical::Tag::PartTag.new(:value => "FOO")
-    end
-
-    its(:value) { should == "foo" }
-
-    it "should accept a nil value" do
-      lambda { @tag.value = nil }.should_not raise_error
-      @tag.value.should be_nil
-    end
-  end
-  
-  describe "#load_value" do
-    before do
-      @tag = Tag::Skill.new(:value => "basketball")
-    end
-
-    specify  { @tag[:value].should == "basketball" }
-    
-    its(:value) { should == "basketballer" }
-
-    it "should accept a nil value" do
-      lambda { @tag.value = nil }.should_not raise_error
-      @tag.value.should be_nil
-    end
-  end
-
   it "should refresh @value on value setter" do
     @tag.value = "foo"
     @tag.value.should == "foo"
