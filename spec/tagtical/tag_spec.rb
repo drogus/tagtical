@@ -57,7 +57,7 @@ describe Tagtical::Tag do
 
   end
 
-  describe "tag scopes Type#finder_type_conditions", :type => "finder" do
+  describe "tag scopes Type#finder_type_conditions" do
     before do
       Tagtical::Tag.create(:value => "Plane")
       Tag::Skill.create(:value => "Kung Fu")
@@ -90,12 +90,12 @@ describe Tagtical::Tag do
       end
     end
 
-#    context "when :type => :!=" do
-#      it "should retrieve parent and child STI level tags" do
-#        Tagtical::Tag.skills.should have_tag_values ["Kung Fu", "Painting"]
-#        Tagtical::Tag.skills(:type => :!=).should have_tag_values ["Plane", "Painting"]
-#      end
-#    end
+    context "when :type => :\"><\"" do
+      it "should retrieve parent and child STI level tags" do
+        Tagtical::Tag.skills.should have_tag_values ["Kung Fu", "Painting"]
+        Tagtical::Tag.skills(:type => :"><").should have_tag_values ["Plane", "Painting"]
+      end
+    end
 
     context "when :type => :>=" do
       it "should retrieve current and parent STI level tags" do
@@ -109,6 +109,34 @@ describe Tagtical::Tag do
         Tagtical::Tag.skills.should have_tag_values ["Kung Fu", "Painting"]
         Tagtical::Tag.skills(:type => :<=).should have_tag_values ["Kung Fu", "Painting"]
       end
+    end
+  end
+
+  describe "#convert_type_options" do
+    let(:tag_type) { Tagtical::Tag::Type.new(:value => "plane") }
+
+    it "should convert :<=" do
+      tag_type.send(:convert_type_options, :<=).sort.should == [:children, :current].sort
+    end
+
+    it "should convert :>=" do
+      tag_type.send(:convert_type_options, :>=).sort.should == [:parents, :current].sort
+    end
+
+    it "should convert :<>" do
+      tag_type.send(:convert_type_options, :"<>").sort.should == [:children, :parents].sort
+    end
+
+    it "should convert :==" do
+      tag_type.send(:convert_type_options, :==).should == [:current]
+    end
+
+    it "should convert :>" do
+      tag_type.send(:convert_type_options, :">").should == [:parents]
+    end
+
+    it "should convert :<" do
+      tag_type.send(:convert_type_options, :"<").should == [:children]
     end
   end
 

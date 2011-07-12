@@ -52,7 +52,7 @@ describe Tagtical::Taggable do
     @taggable.should have(2).skills
   end
 
-  describe "tag retrieval with finder type conditions", :type => "finder" do
+  describe "tag retrieval with finder type conditions" do
     before do
       @taggables[0].tag_list = "bob"
       @taggables[1].tag_list = "charlie"
@@ -75,7 +75,7 @@ describe Tagtical::Taggable do
       @taggables[1].crafts(:type => [:parents, :current]).should have_tag_values %w{charlie css pottery}
       @taggables[1].crafts(:type => :>=).should have_tag_values %w{charlie css pottery}
       @taggables[1].skills(:type => [:parents, :children]).should have_tag_values %w{charlie pottery}
-#      @taggables[1].skills(:type => :!=).should have_tag_values %w{charlie pottery}
+      @taggables[1].skills(:type => :"><").should have_tag_values %w{charlie pottery}
     end
 
     it "should be able to select taggables by subset of tags using ActiveRelation methods" do

@@ -110,6 +110,12 @@ module Tagtical
       value
     end
 
+    def inspect
+      super.tap do |str|
+        str[-2] = "relevance: #{attribute_for_inspect(:relevance)}" if has_attribute?(:relevance)
+      end
+    end
+
     # Overwrite these methods to provide your own storage mechanism for a tag.
     def load_value(value) value end
     def dump_value(value) value end
@@ -172,25 +178,7 @@ module Tagtical
       #   <tt>only</tt> - An array of the following: :parents, :current, :children. Will construct conditions to query the current, parent, and/or children STI classes.
       #
       def finder_type_condition(options={})
-
-        options[:type] = case options[:type]
-        when :==
-          [:current]
-#        when :!=
-#          [:parents, :children]
-        when :<=
-          [:current, :children]
-        when :>=
-          [:current, :parents]
-        when :>
-          [:parents]
-        when :<
-          [:children]
-        else
-          options[:type]
-        end
-
-        type = Array.wrap(options[:type] || (klass ? [:current, :children] : :current))
+        type = convert_type_options(options[:type])
 
         # If we want [:current, :children] or [:current, :children, :parents] and we don't need the finder type condition,
         # then that means we don't need a condition at all since we are at the top-level sti class and we are essentially
@@ -299,6 +287,19 @@ module Tagtical
             end.scan(/^|::/) { arr << $' } # Klass, Tag::Klass, Tagtical::Tag::Klass
           end
         end
+      end
+
+      # Take operator types (ie <, >, =) and convert them into :children, :current, or :parents.
+      def convert_type_options(input)
+        Array.wrap(input || (klass ? [:current, :children] : :current)).map do |type, i|
+          if (t = type.to_s)=~/^[=><]+$/
+            {"=" => :current, ">" => :parents, "<" => :children}.map do |operator, val|
+              val if t.include?(operator)
+            end.compact
+          else
+            type
+          end
+        end.flatten.uniq
       end
 
       def find_tag_class
