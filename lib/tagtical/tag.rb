@@ -116,19 +116,6 @@ module Tagtical
       end
     end
 
-    # Overwrite these methods to provide your own storage mechanism for a tag.
-    def load_value(value) value end
-    def dump_value(value) value end
-
-    def value
-      @value ||= load_value(self[:value])
-    end
-
-    def value=(value)
-      @value = nil
-      self[:value] = dump_value(value)
-    end
-
     # We return nil if we are *not* an STI class.
     def type
       type = self[:type]
