@@ -24,7 +24,7 @@ module Tagtical::Taggable
           # This keeps your reflections cleaner.
 
           # In the case of the base tag type, it will just use the :tags association defined above.
-          Tagtical::Tag.scope(tag_type.scope_name, Proc.new { |options| tag_type.scoping(options || {}) }) unless Tagtical::Tag.respond_to?(tag_type.scope_name)
+          Tagtical::Tag.define_methods_for_type(tag_type)
 
           # If the tag_type is base? (type=="tag"), then we add additional functionality to the AR
           # has_many :tags.

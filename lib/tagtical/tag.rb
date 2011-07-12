@@ -60,7 +60,15 @@ module Tagtical
 
       def sti_name
         return @sti_name if instance_variable_defined?(:@sti_name)
-        @sti_name = Tagtical::Tag==self ? nil : Type.new(name.demodulize).to_sti_name
+        @sti_name = Tagtical::Tag==self ? nil : Type[name.demodulize].to_sti_name
+      end
+
+      def define_methods_for_type(tag_type)
+        (@define_methods_for_type ||= {})[tag_type] ||= begin
+          scope(tag_type.scope_name, Proc.new { |options| tag_type.scoping(options || {}) })
+          define_method(:"#{tag_type}?") { is_a?(tag_type.klass!) }
+          true
+        end
       end
 
       protected
@@ -94,7 +102,7 @@ module Tagtical
     end
 
     def relevance
-      (v = self["relevance"]) && v.to_f
+      (v = self[:relevance]) && v.to_f
     end
 
     # Try to sort by the relevance if provided.
@@ -118,8 +126,7 @@ module Tagtical
 
     # We return nil if we are *not* an STI class.
     def type
-      type = self[:type]
-      type && Type[type]
+      (type = self[:type]) && Type.new(type)
     end
 
     def count
@@ -139,17 +146,19 @@ module Tagtical
       # "tag" should always correspond with demodulize name of the base Tag class (ie Tagtical::Tag).
       BASE = "tag".freeze
 
-      # Default to simply "tag", if none is provided. This will return Tagtical::Tag on calls to #klass
-      def initialize(arg)
-        super(arg.to_s.singularize.underscore.gsub(/_tag$/, ''))
-      end
-
       class << self
         def find(input)
           return input.map { |c| self[c] } if input.is_a?(Array)
-          input.is_a?(self) ? input : new(input)
+          input.is_a?(self) ? input : new(sanitize(input))
         end
         alias :[] :find
+
+        private
+
+        # Sanitize the input for type name consistency.
+        def sanitize(input)
+          input.to_s.singularize.underscore.gsub(/_tag$/, '')
+        end
       end
 
       # The STI name for the Tag model is the same as the tag type.

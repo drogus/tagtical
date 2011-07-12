@@ -112,32 +112,24 @@ describe Tagtical::Tag do
     end
   end
 
-  describe "#convert_type_options" do
-    let(:tag_type) { Tagtical::Tag::Type.new(:value => "plane") }
-
-    it "should convert :<=" do
-      tag_type.send(:convert_type_options, :<=).sort.should == [:children, :current].sort
+  describe ".define_methods_for_type" do
+    before do
+      @skill = Tag::Skill.new(:value => "baskeball")
+      @craft = Tag::Craft.new(:value => "pottery")
     end
 
-    it "should convert :>=" do
-      tag_type.send(:convert_type_options, :>=).sort.should == [:parents, :current].sort
+    it "should have a quester method" do
+      @skill.tag?.should be_true
+      @skill.skill?.should be_true
+      @skill.craft?.should be_false
     end
 
-    it "should convert :<>" do
-      tag_type.send(:convert_type_options, :"<>").sort.should == [:children, :parents].sort
+    it "should have a quester method that considers inheritance" do
+      @craft.tag?.should be_true
+      @craft.skill?.should be_true
+      @craft.craft?.should be_true
     end
-
-    it "should convert :==" do
-      tag_type.send(:convert_type_options, :==).should == [:current]
-    end
-
-    it "should convert :>" do
-      tag_type.send(:convert_type_options, :">").should == [:parents]
-    end
-
-    it "should convert :<" do
-      tag_type.send(:convert_type_options, :"<").should == [:children]
-    end
+    
   end
 
   it "should refresh @value on value setter" do
@@ -293,10 +285,10 @@ describe Tagtical::Tag do
     its(:klass) { should == Tag::Skill }
     its(:scope_name) { should == :skills }
 
-    describe "initialize" do
+    describe ".find" do
       it "converts string into correct format" do
         {"ClassNames" => "class_name", "photo_tags" => "photo", :photo => "photo"}.each do |input, result|
-          @klass.new(input).should == result
+          @klass.find(input).should == result
         end
       end
     end
@@ -309,6 +301,21 @@ describe Tagtical::Tag do
     describe "#==" do
       {"foo" => false, "skill" => true, Tagtical::Tag::Type.new("skill") => true}.each do |obj, result|
         specify { (subject==obj).should==result }
+      end
+    end
+
+    describe "#convert_type_options" do
+      {:<=   => [:children, :current],
+       :>=   => [:parents, :current],
+       :"<>" => [:children, :parents],
+       :==   => [:current],
+       "=="  => [:current], # should work with strings as well.
+       :">"  => [:parents],
+       :"<"  => [:children]
+      }.each do |operator, expected|
+        it "should convert #{operator.inspect} to #{expected.inspect}" do
+          subject.send(:convert_type_options, operator).should have_same_elements(expected)
+        end
       end
     end
 

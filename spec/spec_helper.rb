@@ -25,7 +25,12 @@ end
 
 RSpec::Matchers.define :have_tag_values do |expected|
   match do |actual|
-    actual.map(&:value).sort == expected.sort
+    actual.map(&:value).should have_same_elements(expected)
+  end
+end
+RSpec::Matchers.define :have_same_elements do |expected|
+  match do |actual|
+    actual.sort == expected.sort
   end
 end
 
