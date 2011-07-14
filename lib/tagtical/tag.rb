@@ -120,7 +120,7 @@ module Tagtical
 
     def inspect
       super.tap do |str|
-        str[-2] = "relevance: #{attribute_for_inspect(:relevance)}" if has_attribute?(:relevance)
+        str[-1] = ", relevance: #{attribute_for_inspect(:relevance).to_f}>" if has_attribute?(:relevance)
       end
     end
 
