@@ -57,12 +57,28 @@ describe Tagtical::Tag do
 
   end
 
-  describe "tag scopes Type#finder_type_conditions" do
+  describe ".type" do
+
+    it "should accept :type condition as argument" do
+      @klass::Type.any_instance.expects(:scoping).with(:key => :value, :type => :>=)
+      @klass.type(:skills, :">=", :key => :value)
+    end
+
+  end
+
+  describe "dynamic type scopes" do
+    
     before do
       Tagtical::Tag.create(:value => "Plane")
       Tag::Skill.create(:value => "Kung Fu")
       Tag::Craft.create(:value => "Painting")
       NeedTag.create(:value => "chair") 
+    end
+
+    it "should accept :type condition separately from the options" do
+      Tagtical::Tag.skills(:current).should have_tag_values ["Kung Fu"]
+      Tagtical::Tag.skills(:==).should have_tag_values ["Kung Fu"]
+      Tagtical::Tag.crafts(:>).should have_tag_values ["Kung Fu", "Plane"]
     end
 
     context "when :type => :current or the alias :==" do
@@ -79,7 +95,7 @@ describe Tagtical::Tag do
         Tagtical::Tag.crafts(:type => :parents).should have_tag_values ["Kung Fu", "Plane"]
         Tagtical::Tag.crafts(:type => :>).should have_tag_values ["Kung Fu", "Plane"]
         Tagtical::Tag.skills(:type => :>).should have_tag_values ["Plane"]
-      end
+      end 
     end
 
     context "when :type => :childern or the alias :<" do
@@ -112,7 +128,7 @@ describe Tagtical::Tag do
     end
   end
 
-  describe ".define_methods_for_type" do
+  describe ".define_scope_for_type" do
     before do
       @skill = Tag::Skill.new(:value => "baskeball")
       @craft = Tag::Craft.new(:value => "pottery")
@@ -129,7 +145,7 @@ describe Tagtical::Tag do
       @craft.skill?.should be_true
       @craft.craft?.should be_true
     end
-    
+
   end
 
   it "should refresh @value on value setter" do

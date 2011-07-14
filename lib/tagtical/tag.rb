@@ -3,15 +3,15 @@ module Tagtical
     
     attr_accessible :value
 
-    ### ASSOCIATIONS:
-
     has_many :taggings, :dependent => :destroy, :class_name => 'Tagtical::Tagging'
 
-    ### VALIDATIONS:
-    
-    validates :value, :uniqueness => {:scope => :type}, :presence => true # type is not required, it can be blank
+    scope(:type, lambda do |context, *args|
+      options = args.extract_options!
+      options[:type] = args[0] if args[0]
+      Type[context].scoping(options)
+    end)
 
-    ## POSSIBLE_VALUES SUPPORT:
+    validates :value, :uniqueness => {:scope => :type}, :presence => true # type is not required, it can be blank
 
     class_attribute :possible_values
     validate :validate_possible_values
@@ -63,12 +63,8 @@ module Tagtical
         @sti_name = Tagtical::Tag==self ? nil : Type[name.demodulize].to_sti_name
       end
 
-      def define_methods_for_type(tag_type)
-        (@define_methods_for_type ||= {})[tag_type] ||= begin
-          scope(tag_type.scope_name, Proc.new { |options| tag_type.scoping(options || {}) })
-          define_method(:"#{tag_type}?") { is_a?(tag_type.klass!) }
-          true
-        end
+      def define_scope_for_type(tag_type)
+        scope(tag_type.scope_name, lambda { |*args| type(tag_type, *args) }) unless respond_to?(tag_type.scope_name)
       end
 
       protected
@@ -134,6 +130,18 @@ module Tagtical
     end
 
     private
+
+    def method_missing(method_name, *args, &block)
+      if method_name[-1]=="?"
+        lambda = (klass = Type.new(method_name[0..-2]).klass) ?
+          lambda { is_a?(klass) } :
+          lambda { method_name[0..-2]==type }
+        self.class.send(:define_method, method_name, &lambda)
+        send(method_name)
+      else
+        super
+      end
+    end
 
     def validate_possible_values
       if possible_values && !possible_values.include?(value)
@@ -308,7 +316,7 @@ module Tagtical
             return constant
           end
         end
-
+        
         # Logic comes from ActiveRecord::Base#compute_type.
         candidates.each do |candidate|
           begin
