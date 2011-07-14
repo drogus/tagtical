@@ -155,14 +155,24 @@ describe Tagtical::Tag do
     @tag.value.should == "bar"
   end
 
+  describe "#inspect" do
+
+    it "should append relevance when provided" do
+      @tag["relevance"] = "0.45"
+      @tag.inspect.should == "#<Tagtical::Tag id: nil, value: \"train\", type: nil, relevance: 0.45>"
+    end
+
+  end
+
   describe "sort" do
+
     before do
       @tag1 = @klass.new(:value => "car").tap { |x| x["relevance"] = "2.5" }
       @tag2 = @klass.new(:value => "plane").tap { |x| x["relevance"] = "1.7" }
       @tag3 = @klass.new(:value => "bike").tap { |x| x["relevance"] = "1.1" }
       @tags = [@tag1, @tag2, @tag3]
     end
-    
+
     it "should sort by relevance if all tags have them" do
       @tags.sort.map(&:value).should == ["bike", "plane", "car"]
     end
