@@ -7,40 +7,50 @@ module Tagtical
         super(value.to_s)
       end
     end
-    
+
     cattr_accessor :delimiter
     self.delimiter = ','
+
+    cattr_accessor :relevance_delimiter
+    self.relevance_delimiter = ':'
+
+    cattr_accessor :value_quotes
+    self.value_quotes = ["'", "\""]
 
     attr_accessor :owner
 
     def initialize(*args)
-      add(*args)
+      add(*args) unless args.empty?
     end
-  
+
     ##
     # Returns a new TagList using the given tag string.
     #
     # Example:
     #   tag_list = TagList.from("One , Two,  Three")
-    #   tag_list # ["One", "Two", "Three"]
-    def self.from(string)
-      if string.is_a?(Hash)
-        new(string)
-      else
-        glue   = delimiter.ends_with?(" ") ? delimiter : "#{delimiter} "
-        string = string.join(glue) if string.respond_to?(:join)
+    #   tag_list # ["One", "Two", "Three"] <=== as TagValue
+    def self.from(*args)
+      return new(*args)
+      values = case input
+      when Hash
+        input.map { |value, relevance| TagValue.new(value, relevance) }
+      when Array
+        input
+      when String
+        input, arr = input.dup, []
 
-        new.tap do |tag_list|
-          string = string.to_s.dup
-
-          # Parse the quoted tags
-          string.gsub!(/(\A|#{delimiter})\s*"(.*?)"\s*(#{delimiter}\s*|\z)/) { tag_list << $2; $3 }
-          string.gsub!(/(\A|#{delimiter})\s*'(.*?)'\s*(#{delimiter}\s*|\z)/) { tag_list << $2; $3 }
-
-          tag_list.add(string.split(delimiter))
+        # Parse the quoted tags
+        value_quotes.each do |value_quote|
+          input.gsub!(/(\A|#{delimiter})\s*#{value_quote}(.*?)#{value_quote}\s*(#{delimiter}\s*|\z)/) { arr << $2 ; $3 }
         end
+
+        # Parse the unquoted tags
+        arr.concat(input.split(delimiter))
       end
+
+      new.tap { |tag_list| tag_list.concat(values) }
     end
+
 
     def concat(values)
       super(values.map! { |v| convert_tag_value(v) })
@@ -57,7 +67,7 @@ module Tagtical
     #
     # Example:
     #   tag_list.add("Fun", "Happy")
-    #   tag_list.add("Fun, Happy", :parse => true)
+    #   tag_list.add("Fun, Happy")
     #   tag_list.add("Fun" => "0.546", "Happy" => 0.465) # add relevance
     def add(*values)
       extract_and_apply_options!(values)
@@ -73,7 +83,7 @@ module Tagtical
     #
     # Example:
     #   tag_list.remove("Sad", "Lonely")
-    #   tag_list.remove("Sad, Lonely", :parse => true)
+    #   tag_list.remove("Sad, Lonely")
     def remove(*values)
       extract_and_apply_options!(values)
       delete_if { |value| values.include?(value) }
@@ -103,7 +113,7 @@ module Tagtical
     end
 
     private
-  
+
     # Remove whitespace, duplicates, and blanks.
     def clean!(values=nil)
       delete_if { |value| values.include?(value) } if values.present? # Allow editing of relevance
@@ -114,22 +124,38 @@ module Tagtical
     end
 
     def extract_and_apply_options!(args)
-      if args.size==1 && args[0].is_a?(Hash)
-        args.replace(args[0].map { |value, relevance| TagValue.new(value, relevance) })
-      else
-        options = args.last.is_a?(Hash) ? args.pop : {}
-        options.assert_valid_keys :parse
+      options = args.last.is_a?(Hash) && args.size > 1 ? args.pop : {}
+      options.assert_valid_keys :parse
+      
+      args.map! { |a| extract(a, options) }
+      args.flatten!
+    end
 
-        if options[:parse]
-          args.map! { |a| self.class.from(a) }
+    def extract(input, options={})
+      case input
+      when String
+        if !input.include?(delimiter) || options[:parse]==false
+          [input]
+        else
+          input, arr = input.dup, []
+
+          # Parse the quoted tags
+          value_quotes.each do |value_quote|
+            input.gsub!(/(\A|#{delimiter})\s*#{value_quote}(.*?)#{value_quote}\s*(#{delimiter}\s*|\z)/) { arr << $2 ; $3 }
+          end
+
+          # Parse the unquoted tags
+          arr.concat(input.split(delimiter).each(&:strip!))
         end
-
-        args.flatten!
+      when Hash
+        input.map { |value, relevance| TagValue.new(value, relevance) }
+      when Array
+        input
       end
     end
 
     def convert_tag_value(value)
-      value.is_a?(TagValue) ? value : TagValue.new(value)
+      value.is_a?(TagValue) ? value : TagValue.new(*value.split(":", 2).each(&:strip!))
     end
 
   end

@@ -36,7 +36,7 @@ describe Tagtical::TagList do
   end
 
   it "should be able to add delimited lists of words" do
-    @tag_list.add("cool, wicked", :parse => true)
+    @tag_list.add("cool, wicked")
     @tag_list.should include("cool", "wicked")
   end
 
@@ -48,17 +48,17 @@ describe Tagtical::TagList do
   end
 
   it "should be able to add delimited list of words with quoted delimiters" do
-    @tag_list.add("'cool, wicked', \"really cool, really wicked\"", :parse => true)
+    @tag_list.add("'cool, wicked', \"really cool, really wicked\"")
     @tag_list.should include("cool, wicked", "really cool, really wicked")
   end
 
   it "should be able to handle other uses of quotation marks correctly" do
-    @tag_list.add("john's cool car, mary's wicked toy", :parse => true)
+    @tag_list.add("john's cool car, mary's wicked toy")
     @tag_list.should include("john's cool car", "mary's wicked toy")
   end
 
   it "should be able to add an array of words" do
-    @tag_list.add(["cool", "wicked"], :parse => true)
+    @tag_list.add(["cool", "wicked"])
     @tag_list.should include("cool", "wicked")
   end
 
@@ -74,19 +74,19 @@ describe Tagtical::TagList do
   end
 
   it "should be able to remove delimited lists of words" do
-    @tag_list.remove("awesome, radical", :parse => true)
+    @tag_list.remove("awesome, radical")
     @tag_list.should be_empty
   end
 
   it "should be able to remove an array of words" do
-    @tag_list.remove(["awesome", "radical"], :parse => true)
+    @tag_list.remove(["awesome", "radical"])
     @tag_list.should be_empty
   end
 
   its(:to_s) { should == "awesome, radical" }
 
   it "should quote escape tags with commas in them" do
-    @tag_list.add("cool","rad,bodacious")
+    @tag_list.add("cool","rad,bodacious", :parse => false)
     @tag_list.to_s.should == "awesome, radical, cool, \"rad,bodacious\""
   end
 

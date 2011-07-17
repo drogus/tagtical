@@ -28,6 +28,12 @@ could be a serialized field of long and lat if you wanted.
 5. Support a config/tagtical.yml to further configure the application. For example, since most people
 usually have one User class for their application, there is no reason to do polymorphic on "tagger",
 so I give the user the option to specify the class_name specifically for tagger.
+6. :parse option to tag_list is inverted. Specify :parse => false if you don't want your tag values
+parsed.
+
+  Example:
+    # would give you a tag of "red, blue" instead of "red" and "blue".
+    tag_list.add("red, blue", :parse => false)
 
 Additions include:
 1. Scopes are created on Tag so you can do photo.tags.color and grab all the tags of type Tag::Color, for example.
