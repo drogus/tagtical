@@ -14,6 +14,7 @@ module Tagtical
     validates :value, :uniqueness => {:scope => :type}, :presence => true # type is not required, it can be blank
 
     class_attribute :possible_values
+    before_validation :ensure_possible_values
     validate :validate_possible_values
     
     self.store_full_sti_class = false
@@ -67,26 +68,34 @@ module Tagtical
         scope(tag_type.scope_name, lambda { |*args| type(tag_type, *args) }) unless respond_to?(tag_type.scope_name)
       end
 
+      # Checks to see if a tags value is present in a set of tags and returns that tag.
+      def detect_comparable(objects, value)
+        value = comparable_value(value)
+        objects.detect { |obj| comparable_value(obj) == value }
+      end
+
       protected
 
       def compute_type(type_name)
         @@compute_type ||= {}
-        # super is required when it gets called from a reflection.
+        # super is required when it gets called from a reflection for a different class.
         @@compute_type[type_name] || super
       rescue Exception => e
         @@compute_type[type_name] = Type.new(type_name).klass!
       end
 
       private
-      
-      # Checks to see if a tags value is present in a set of tags and returns that tag.
-      def detect_comparable(tags, value)
-        value = comparable_value(value)
-        tags.detect { |tag| comparable_value(tag.value) == value }
-      end
 
-      def comparable_value(str)
-        RUBY_VERSION >= "1.9" ? str.downcase : str.mb_chars.downcase
+      if RUBY_VERSION >= "1.9"
+        def comparable_value(str)
+          str = str.value if str.is_a?(self)
+          str.downcase
+        end
+      else
+        def comparable_value(str)
+          str = str.value if str.is_a?(self)
+          str.mb_chars.downcase
+        end
       end
 
     end
@@ -141,6 +150,14 @@ module Tagtical
       else
         super
       end
+    end
+
+    # Ensure that the value follows the case-sensitivity from the possible_values.
+    def ensure_possible_values
+      if possible_values && (value = self.class.detect_comparable(possible_values, self.value))
+        self.value = value
+      end
+      true
     end
 
     def validate_possible_values
