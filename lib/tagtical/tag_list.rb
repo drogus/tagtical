@@ -30,27 +30,8 @@ module Tagtical
     #   tag_list = TagList.from("One , Two,  Three")
     #   tag_list # ["One", "Two", "Three"] <=== as TagValue
     def self.from(*args)
-      return new(*args)
-      values = case input
-      when Hash
-        input.map { |value, relevance| TagValue.new(value, relevance) }
-      when Array
-        input
-      when String
-        input, arr = input.dup, []
-
-        # Parse the quoted tags
-        value_quotes.each do |value_quote|
-          input.gsub!(/(\A|#{delimiter})\s*#{value_quote}(.*?)#{value_quote}\s*(#{delimiter}\s*|\z)/) { arr << $2 ; $3 }
-        end
-
-        # Parse the unquoted tags
-        arr.concat(input.split(delimiter))
-      end
-
-      new.tap { |tag_list| tag_list.concat(values) }
+      new(*args)
     end
-
 
     def concat(values)
       super(values.map! { |v| convert_tag_value(v) })
