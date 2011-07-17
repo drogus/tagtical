@@ -21,7 +21,7 @@ module Tagtical
     ### CLASS METHODS:
 
     class << self
-
+      
       def where_any(list, options={})
         char = "%" if options[:wildcard]
         operator = options[:case_insensitive] || options[:wildcard] ?

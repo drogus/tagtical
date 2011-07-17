@@ -40,6 +40,13 @@ describe Tagtical::TagList do
     @tag_list.should include("cool", "wicked")
   end
 
+  it "should be able to edit relevance of an existing tag" do
+    @tag_list.add("cool" => 0.3)
+    @tag_list.add("cool" => 0.6)
+    
+    @tag_list.detect { |t| t=="cool" }.relevance.should == 0.6
+  end
+
   it "should be able to add delimited list of words with quoted delimiters" do
     @tag_list.add("'cool, wicked', \"really cool, really wicked\"", :parse => true)
     @tag_list.should include("cool, wicked", "really cool, really wicked")

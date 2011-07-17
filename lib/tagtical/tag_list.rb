@@ -61,8 +61,9 @@ module Tagtical
     #   tag_list.add("Fun" => "0.546", "Happy" => 0.465) # add relevance
     def add(*values)
       extract_and_apply_options!(values)
-      concat(values)
-      clean!
+      clean!(values) do
+        concat(values)
+      end
       self
     end
 
@@ -104,7 +105,9 @@ module Tagtical
     private
   
     # Remove whitespace, duplicates, and blanks.
-    def clean!
+    def clean!(values=nil)
+      delete_if { |value| values.include?(value) } if values.present? # Allow editing of relevance
+      yield if block_given?
       reject!(&:blank?)
       each(&:strip!)
       uniq!(&:downcase)
