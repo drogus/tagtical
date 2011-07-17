@@ -23,14 +23,25 @@ RSpec.configure do |config|
   config.mock_with :mocha
 end
 
-RSpec::Matchers.define :have_tag_values do |expected|
+RSpec::Matchers.define :have_only_tag_values do |expected|
   match do |actual|
+    actual = actual.tags if actual.respond_to?(:tags)
     actual.map(&:value).should have_same_elements(expected)
   end
 end
 RSpec::Matchers.define :have_same_elements do |expected|
   match do |actual|
     actual.sort == expected.sort
+  end
+end
+
+# Rspec when we want to work with possible values.
+def when_possible_values_specified(options={}, &block)
+  options = {:klass => Tagtical::Tag, :values => %w{knife fork spoon}}.update(options)
+  context "when possible_values specified" do
+    before { options[:klass].possible_values = options[:values] }
+    after  { options[:klass].possible_values = nil}
+    instance_exec(&block)
   end
 end
 

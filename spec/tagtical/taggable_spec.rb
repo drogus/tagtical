@@ -5,6 +5,7 @@ describe Tagtical::Taggable do
     @taggable = TaggableModel.new(:name => "Bob Jones")
     @taggables = [@taggable, TaggableModel.new(:name => "John Doe")]
   end
+  subject { @taggable }
 
   it "should have tag types" do
     TaggableModel.tag_types.should include("tag", "language", "skill", "craft", "need", "offering")
@@ -52,6 +53,25 @@ describe Tagtical::Taggable do
     @taggable.should have(2).skills
   end
 
+  when_possible_values_specified(:values => %w{Knitting Ruby Pottery}) do
+    
+    before do
+      @taggable.craft_list = "knitting, ruby"
+      @taggable.save!
+      @taggable.reload
+    end
+
+    it { should have_only_tag_values %w{Knitting Ruby} }
+
+    it "should save only one tag with a value from the possible_values list" do
+      @taggable.craft_list.add("ruby", "pottery")
+      @taggable.save!
+      @taggable.reload
+      should have_only_tag_values %w{Knitting Ruby Pottery}
+    end
+
+  end
+
   describe "tag retrieval with finder type conditions" do
     before do
       @taggables[0].tag_list = "bob"
@@ -64,18 +84,18 @@ describe Tagtical::Taggable do
     end
 
     it "should be able to query tags" do
-      @taggables[0].tags(:type => :current).should have_tag_values %w{bob}
-      @taggables[0].tags(:type => :==).should have_tag_values %w{bob}
-      @taggables[0].tags.should have_tag_values %w{bob knitting ruby}
-      @taggables[0].tags(:type => :children).should have_tag_values %w{knitting ruby}
-      @taggables[0].tags(:type => :<).should have_tag_values %w{knitting ruby}
-      @taggables[1].crafts(:type => :parents).should have_tag_values %w{charlie css}
-      @taggables[1].crafts(:type => :>).should have_tag_values %w{charlie css}
+      @taggables[0].tags(:type => :current).should have_only_tag_values %w{bob}
+      @taggables[0].tags(:type => :==).should have_only_tag_values %w{bob}
+      @taggables[0].tags.should have_only_tag_values %w{bob knitting ruby}
+      @taggables[0].tags(:type => :children).should have_only_tag_values %w{knitting ruby}
+      @taggables[0].tags(:type => :<).should have_only_tag_values %w{knitting ruby}
+      @taggables[1].crafts(:type => :parents).should have_only_tag_values %w{charlie css}
+      @taggables[1].crafts(:type => :>).should have_only_tag_values %w{charlie css}
 
-      @taggables[1].crafts(:type => [:parents, :current]).should have_tag_values %w{charlie css pottery}
-      @taggables[1].crafts(:type => :>=).should have_tag_values %w{charlie css pottery}
-      @taggables[1].skills(:type => [:parents, :children]).should have_tag_values %w{charlie pottery}
-      @taggables[1].skills(:type => :"><").should have_tag_values %w{charlie pottery}
+      @taggables[1].crafts(:type => [:parents, :current]).should have_only_tag_values %w{charlie css pottery}
+      @taggables[1].crafts(:type => :>=).should have_only_tag_values %w{charlie css pottery}
+      @taggables[1].skills(:type => [:parents, :children]).should have_only_tag_values %w{charlie pottery}
+      @taggables[1].skills(:type => :"><").should have_only_tag_values %w{charlie pottery}
     end
 
     it "should be able to select taggables by subset of tags using ActiveRelation methods" do
