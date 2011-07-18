@@ -81,7 +81,7 @@ describe Tagtical::Taggable do
 
       context "when :cascade => true" do
         before do
-          @taggable.set_tag_list(["ruby", "plain"], :cascade => true)
+          @taggable.set_tag_list(["ruby : 7 ", "plain  "], :cascade => true)
           @taggable.save!
           @taggable.reload
         end
@@ -92,6 +92,10 @@ describe Tagtical::Taggable do
 
         it "should set value on skill" do
           @taggable.skills.should have_only_tag_values %w{Ruby}
+        end
+
+        it "should keep the tag's relevance" do
+          @taggable.skills[0].relevance.should == 7
         end
 
         it "should remove all elements from craft" do

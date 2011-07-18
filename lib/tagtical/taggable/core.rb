@@ -320,9 +320,9 @@ module Tagtical::Taggable
           tag_types.each do |t|
             if t.klass && t.klass <= tag_type.klass && t.klass.possible_values
               new_tag_list = Tagtical::TagList.new
-              tag_list.reject! do |elm|
-                if value = t.klass.detect_possible_value(elm)
-                  new_tag_list << value
+              tag_list.reject! do |tag_value|
+                if value = t.klass.detect_possible_value(tag_value)
+                  new_tag_list << Tagtical::TagList::TagValue.new(value, tag_value.relevance)
                   true
                 end
               end
