@@ -21,7 +21,7 @@ module Tag
     end
     
   end
-  class Craft < Skill # Multiple levels of inheritance
+  class FooCraft < Skill # Multiple levels of inheritance
   end
 end
 class NeedTag < Tagtical::Tag # Tag subclass ending in "Tag"
@@ -32,7 +32,7 @@ end
 ### END Tag Subclasses ###
 
 class TaggableModel < ActiveRecord::Base
-  acts_as_taggable(:languages, :skills, :crafts, :needs, :offerings)
+  acts_as_taggable(:languages, :skills, {:crafts => Tag::FooCraft}, :needs, :offerings)
   has_many :untaggable_models
 end
 

@@ -7,7 +7,7 @@ module Tagtical
 
     scope(:type, lambda do |context, *args|
       options = args.extract_options!
-      options[:type] = args[0] if args[0]
+      options[:scope] = args[0] if args[0]
       Type[context].scoping(options)
     end)
 
@@ -53,7 +53,7 @@ module Tagtical
         tag_list = [tag_list].flatten
         return {} if tag_list.empty?
 
-        existing_tags  = where_any_like(tag_list).all
+        existing_tags = where_any_like(tag_list).all
         tag_list.each_with_object({}) do |value, tag_lookup|
           tag_lookup[detect_comparable(existing_tags, value) || create!(:value => value)] = value
         end
@@ -61,7 +61,7 @@ module Tagtical
 
       def sti_name
         return @sti_name if instance_variable_defined?(:@sti_name)
-        @sti_name = Tagtical::Tag==self ? nil : Type[name.demodulize].to_sti_name
+        @sti_name = Tagtical::Tag==self ? nil : Type.to_sti_name(self)
       end
 
       def define_scope_for_type(tag_type)
@@ -72,6 +72,10 @@ module Tagtical
       def detect_comparable(objects, value)
         value = comparable_value(value)
         objects.detect { |obj| comparable_value(obj) == value }
+      end
+
+      def detect_possible_value(value)
+        detect_comparable(possible_values, value) if possible_values
       end
 
       protected
@@ -154,7 +158,7 @@ module Tagtical
 
     # Ensure that the value follows the case-sensitivity from the possible_values.
     def ensure_possible_values
-      if possible_values && (value = self.class.detect_comparable(possible_values, self.value))
+      if value = self.class.detect_possible_value(self.value)
         self.value = value
       end
       true
@@ -171,16 +175,28 @@ module Tagtical
       # "tag" should always correspond with demodulize name of the base Tag class (ie Tagtical::Tag).
       BASE = "tag".freeze
 
+      # Keep a hash to store unorthodox class names for tag types.
+      # ie :foo => Tag::WeirdFoo
+      @@tag_classes = {}
+
       class << self
         def find(input)
-          return input.map { |c| self[c] } if input.is_a?(Array)
-          input.is_a?(self) ? input : new(sanitize(input))
+          case input
+          when self then input
+          when String, Symbol then new(sanitize(input))
+          when Hash  then input.map { |input, klass| new(sanitize(input)).tap { |str| @@tag_classes[str] = klass }}
+          when Array then input.map { |c| find(c) }.flatten
+          end
         end
         alias :[] :find
 
+        def to_sti_name(klass)
+          @@tag_classes.key(klass) || self[klass.name.demodulize].to_sti_name
+        end
+
         private
 
-        # Sanitize the input for type name consistency.
+        # Sanitize the input for type name consistency and klass.
         def sanitize(input)
           input.to_s.singularize.underscore.gsub(/_tag$/, '')
         end
@@ -199,7 +215,7 @@ module Tagtical
       #   <tt>only</tt> - An array of the following: :parents, :current, :children. Will construct conditions to query the current, parent, and/or children STI classes.
       #
       def finder_type_condition(options={})
-        type = convert_type_options(options[:type])
+        type = convert_type_options(options[:scope])
 
         # If we want [:current, :children] or [:current, :children, :parents] and we don't need the finder type condition,
         # then that means we don't need a condition at all since we are at the top-level sti class and we are essentially
@@ -260,6 +276,11 @@ module Tagtical
       # Return the Tag class or return top-level
       def klass!
         klass || Tagtical::Tag
+      end
+
+      # Returns the Tag subclasses if they inherit from #klass
+      def subclasses(tag_types)
+
       end
 
       def has_many_name
@@ -324,6 +345,10 @@ module Tagtical
       end
 
       def find_tag_class
+        if constant = @@tag_classes[self]
+          return constant
+        end
+
         candidates = derive_class_candidates
 
         # Attempt to find the preloaded class instead of having to do NameError catching below.

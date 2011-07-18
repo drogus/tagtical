@@ -40,7 +40,7 @@ describe Tagtical::Tag do
     it "should be unique on value and type" do
       lambda {
         Tag::Skill.create!(:value => "foo")
-        Tag::Craft.create!(:value => "foo")
+        Tag::FooCraft.create!(:value => "foo")
       }.should change(@klass, :count).by(2)
     end
 
@@ -74,8 +74,8 @@ describe Tagtical::Tag do
 
   describe ".type" do
 
-    it "should accept :type condition as argument" do
-      @klass::Type.any_instance.expects(:scoping).with(:key => :value, :type => :>=)
+    it "should accept :scope condition as argument" do
+      @klass::Type.any_instance.expects(:scoping).with(:key => :value, :scope => :>=)
       @klass.type(:skills, :">=", :key => :value)
     end
 
@@ -86,59 +86,59 @@ describe Tagtical::Tag do
     before do
       Tagtical::Tag.create(:value => "Plane")
       Tag::Skill.create(:value => "Kung Fu")
-      Tag::Craft.create(:value => "Painting")
+      Tag::FooCraft.create(:value => "Painting")
       NeedTag.create(:value => "chair") 
     end
 
-    it "should accept :type condition separately from the options" do
+    it "should accept :scope condition separately from the options" do
       Tagtical::Tag.skills(:current).should have_only_tag_values ["Kung Fu"]
       Tagtical::Tag.skills(:==).should have_only_tag_values ["Kung Fu"]
       Tagtical::Tag.crafts(:>).should have_only_tag_values ["Kung Fu", "Plane"]
     end
 
-    context "when :type => :current or the alias :==" do
+    context "when :scope => :current or the alias :==" do
       it "should retrieve current STI level tags" do
         Tagtical::Tag.skills.should have_only_tag_values ["Kung Fu", "Painting"]
-        Tagtical::Tag.skills(:type => :current).should have_only_tag_values ["Kung Fu"]
-        Tagtical::Tag.skills(:type => :==).should have_only_tag_values ["Kung Fu"]
+        Tagtical::Tag.skills(:scope => :current).should have_only_tag_values ["Kung Fu"]
+        Tagtical::Tag.skills(:scope => :==).should have_only_tag_values ["Kung Fu"]
       end
     end
 
-    context "when :type => :parent or the alias :>" do
+    context "when :scope => :parent or the alias :>" do
       it "should retrieve parent STI level tags" do
         Tagtical::Tag.skills.should have_only_tag_values ["Kung Fu", "Painting"]
-        Tagtical::Tag.crafts(:type => :parents).should have_only_tag_values ["Kung Fu", "Plane"]
-        Tagtical::Tag.crafts(:type => :>).should have_only_tag_values ["Kung Fu", "Plane"]
-        Tagtical::Tag.skills(:type => :>).should have_only_tag_values ["Plane"]
+        Tagtical::Tag.crafts(:scope => :parents).should have_only_tag_values ["Kung Fu", "Plane"]
+        Tagtical::Tag.crafts(:scope => :>).should have_only_tag_values ["Kung Fu", "Plane"]
+        Tagtical::Tag.skills(:scope => :>).should have_only_tag_values ["Plane"]
       end 
     end
 
-    context "when :type => :childern or the alias :<" do
+    context "when :scope => :childern or the alias :<" do
       it "should retrieve child STI level tags" do
         Tagtical::Tag.skills.should have_only_tag_values ["Kung Fu", "Painting"]
-        Tagtical::Tag.skills(:type => :children).should have_only_tag_values ["Painting"]
-        Tagtical::Tag.skills(:type => :<).should have_only_tag_values ["Painting"]
+        Tagtical::Tag.skills(:scope => :children).should have_only_tag_values ["Painting"]
+        Tagtical::Tag.skills(:scope => :<).should have_only_tag_values ["Painting"]
       end
     end
 
-    context "when :type => :\"><\"" do
+    context "when :scope => :\"><\"" do
       it "should retrieve parent and child STI level tags" do
         Tagtical::Tag.skills.should have_only_tag_values ["Kung Fu", "Painting"]
-        Tagtical::Tag.skills(:type => :"><").should have_only_tag_values ["Plane", "Painting"]
+        Tagtical::Tag.skills(:scope => :"><").should have_only_tag_values ["Plane", "Painting"]
       end
     end
 
-    context "when :type => :>=" do
+    context "when :scope => :>=" do
       it "should retrieve current and parent STI level tags" do
         Tagtical::Tag.skills.should have_only_tag_values ["Kung Fu", "Painting"]
-        Tagtical::Tag.skills(:type => :>=).should have_only_tag_values ["Kung Fu", "Plane"]
+        Tagtical::Tag.skills(:scope => :>=).should have_only_tag_values ["Kung Fu", "Plane"]
       end
     end
 
-    context "when :type => :<=" do
+    context "when :scope => :<=" do
       it "should retrieve current and child STI level tags" do
         Tagtical::Tag.skills.should have_only_tag_values ["Kung Fu", "Painting"]
-        Tagtical::Tag.skills(:type => :<=).should have_only_tag_values ["Kung Fu", "Painting"]
+        Tagtical::Tag.skills(:scope => :<=).should have_only_tag_values ["Kung Fu", "Painting"]
       end
     end
   end
@@ -146,7 +146,7 @@ describe Tagtical::Tag do
   describe ".define_scope_for_type" do
     before do
       @skill = Tag::Skill.new(:value => "baskeball")
-      @craft = Tag::Craft.new(:value => "pottery")
+      @craft = Tag::FooCraft.new(:value => "pottery")
     end
 
     it "should have a quester method" do

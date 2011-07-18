@@ -96,6 +96,10 @@ rake spec:plugins
       class Activity < Tagtical::Tag
       end
       class Sport < Activity
+
+        # You can also set the possible values for a specific tag type
+        self.possible_values = %w{boxing basketball tennis hockey footabll soccer}
+
         def ball?
           value=~/ball$/i
         end
@@ -107,6 +111,11 @@ rake spec:plugins
     @user.activity_list = "joking, clowning, boxing" # but you can do it for any context!
     @user.activity_list                      # => ["joking","clowning","boxing"] as TagList
     @user.save
+
+    # Cascade tag_list setters =)
+    @user.set_activity_list(["clowning", "boxing"], :cascade => true)
+    @user.save!
+    @user.sport_list  # => ["boxing"]
 
     @user.tags # => [<Tag value:"awesome">,<Tag value:"slick">,<Tag value:"hefty">]
     @user.activities # => [<Tag::Activity value:"joking">,<Tag::Activity value:"clowning">,<Tag::Activity value:"boxing">]
@@ -120,14 +129,18 @@ rake spec:plugins
                                          # from Activity to Sport and give it a relevance of 4.5.
     @user.save
 
+    @user.sport_list = {"chess"}
+    @user.save! # <=== will throw an error, chess is not a sport!
+
     @user.activities # => [<Tag::Activity value:"joking">,<Tag::Activity value:"clowning">,<Tag::Sport value:"boxing">]
-    @user.activities(:type => :children) # => [<Tag::Sport value:"boxing">] - look at only the STI subclasses
-    @user.activities(:type => :<) # => [<Tag::Sport value:"boxing">] - look at only the STI subclasses
-    @user.activities(:type => :current) # => [<Tag::Activity value:"joking">,<Tag::Activity value:"clowning">] - look at only the current STI class
-    @user.activities(:type => :==) # => [<Tag::Activity value:"joking">,<Tag::Activity value:"clowning">] - look at only the current STI class
+    @user.activities(:scope => :children) # => [<Tag::Sport value:"boxing">] - look at only the STI subclasses
+    @user.activities(:scope => :<) # => [<Tag::Sport value:"boxing">] - look at only the STI subclasses
+    @user.activities(:scope => :current) # => [<Tag::Activity value:"joking">,<Tag::Activity value:"clowning">] - look at only the current STI class
+    @user.activities(:scope => :==) # => [<Tag::Activity value:"joking">,<Tag::Activity value:"clowning">] - look at only the current STI class
 
     @user.activities.first.athletic? # => false
     @user.sports.all(&:ball?) # => true
+
 
 --- Defining Subclasses
 

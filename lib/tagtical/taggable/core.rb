@@ -29,12 +29,12 @@ module Tagtical::Taggable
           # If the tag_type is base? (type=="tag"), then we add additional functionality to the AR
           # has_many :tags.
           #
-          #   taggable_model.tags(:type => :children)
+          #   taggable_model.tags(:scope => :children)
           #   taggable_model.tags <-- still works like normal has_many
-          #   taggable_model.tags(true, :type => :current) <-- reloads the tags association and appends scope for only current type.
+          #   taggable_model.tags(true, :scope => :current) <-- reloads the tags association and appends scope for only current type.
           if tag_type.has_many_name==:tags
             define_method("tags_with_finder_type_options") do |*args|
-              options = args.pop if args.last.is_a?(Hash)
+              options = args.pop unless [true, false].include?(args.last) # true/false for has_many default functionality.
               scope = tags_without_finder_type_options(*args)
               options ? scope.tags(options) : scope
             end
@@ -49,16 +49,17 @@ module Tagtical::Taggable
               tagged_with(tags.flatten, options.merge(:on => :#{tag_type}))
             end
 
-            def #{tag_type}_list
-              tag_list_on('#{tag_type}')
+            def #{tag_type}_list(scoping_options={})
+              tag_list_on('#{tag_type}', scoping_options)
             end
 
-            def #{tag_type}_list=(new_tags)
-              set_tag_list_on('#{tag_type}', new_tags)
+            def #{tag_type}_list=(new_tags, scoping_options={})
+              set_tag_list_on('#{tag_type}', new_tags, scoping_options)
             end
+            alias set_#{tag_type}_list #{tag_type}_list=
 
-            def all_#{tag_type.pluralize}_list
-              all_tags_list_on('#{tag_type}')
+            def all_#{tag_type.pluralize}_list(scoping_options={})
+              all_tags_list_on('#{tag_type}', scoping_options)
             end
           RUBY
 
@@ -99,7 +100,7 @@ module Tagtical::Taggable
 
         options[:on] ||= Tagtical::Tag::Type::BASE
         tag_type = Tagtical::Tag::Type.find(options.delete(:on))
-        finder_type_condition_options = options.extract!(:type)
+        finder_type_condition_options = options.extract!(:scope)
 
         tag_table, tagging_table = Tagtical::Tag.table_name, Tagtical::Tagging.table_name
 
@@ -189,35 +190,36 @@ module Tagtical::Taggable
         self[tag_type(context).tag_list_name(:cached)]
       end
 
-      def tag_list_cache_set_on?(context)
-        variable_name = tag_type(context).tag_list_ivar
-        !instance_variable_get(variable_name).nil?
+      ##
+      # model.set_tag_list_on("skill", ["kung fu", "karate"]) # will overwrite tags from inheriting tag classes
+      # model.set_tag_list_on("skill", ["kung fu", "karate"], :scope => :==) # will not overwrite tags from inheriting tag classes
+      def set_tag_list_on(context, new_list, scoping_options={})
+        tag_list = Tagtical::TagList.from(new_list)
+        cascade_set_tag_list!(tag_list, context, scoping_options)
+        tag_list_cache_on(context)[scoping_options] = tag_list
       end
 
-      def tag_list_cache_on(context)
-        variable_name = tag_type(context).tag_list_ivar
-        instance_variable_get(variable_name) || instance_variable_set(variable_name, Tagtical::TagList.new(tags_on(context).map(&:value)))
+      def tag_list_on(context, scoping_options={})
+        tag_list_cache_on(context)[scoping_options] ||= Tagtical::TagList.new(tags_on(context, scoping_options).map(&:value))
       end
 
-      def tag_list_on(context)
-        tag_list_cache_on(context)
+      def tag_list_cache_on(context, prefix=nil)
+        variable = tag_type(context).tag_list_ivar(prefix)
+        instance_variable_get(variable) || instance_variable_set(variable, {})
       end
 
       def tag_types
         @tag_types ||= self.class.tag_types.dup
       end
 
-      def all_tags_list_on(context)
-        variable_name = tag_type(context).tag_list_ivar(:all)
-        return instance_variable_get(variable_name) if instance_variable_get(variable_name)
-
-        instance_variable_set(variable_name, Tagtical::TagList.new(all_tags_on(context).map(&:value)).freeze)
+      def all_tags_list_on(context, scoping_options={})
+        tag_list_cache_on(context, :all)[scoping_options] ||= Tagtical::TagList.new(all_tags_on(context, scoping_options).map(&:value)).freeze
       end
 
       ##
       # Returns all tags of a given context
-      def all_tags_on(context, options={})
-        scope = tag_scope(context, options)
+      def all_tags_on(context, scoping_options={})
+        scope = tag_scope(context, scoping_options)
         if Tagtical::Tag.using_postgresql?
           group_columns = grouped_column_names_for(Tagtical::Tag)
           scope = scope.order("max(#{Tagtical::Tagging.table_name}.created_at)").group(group_columns)
@@ -229,13 +231,8 @@ module Tagtical::Taggable
 
       ##
       # Returns all tags that aren't owned.
-      def tags_on(context, options={})
-        tag_scope(context, options).where("#{Tagtical::Tagging.table_name}.tagger_id IS NULL").all
-      end
-
-      def set_tag_list_on(context, new_list)
-        variable_name = tag_type(context).tag_list_ivar
-        instance_variable_set(variable_name, Tagtical::TagList.from(new_list))
+      def tags_on(context, scoping_options={})
+        tag_scope(context, scoping_options).where("#{Tagtical::Tagging.table_name}.tagger_id IS NULL").all
       end
 
       def reload(*args)
@@ -251,39 +248,42 @@ module Tagtical::Taggable
         # Do the classes from top to bottom. We want the list from "tag" to run before "sub_tag" runs.
         # Otherwise, we will end up removing taggings from "sub_tag" since they aren't on "tag'.
         tag_types.sort_by(&:active_record_sti_level).each do |tag_type|
-          next unless tag_list_cache_set_on?(tag_type)
+          (tag_list_cache_on(tag_type) || {}).each do |scoping_options, tag_list|
+            tag_list = tag_list.uniq
 
-          tag_list = tag_list_cache_on(tag_type).uniq
+            # Find existing tags or create non-existing tags:
+            tag_value_lookup = tag_type.scoping { find_or_create_tags(tag_list) }
+            tags = tag_value_lookup.keys
 
-          # Find existing tags or create non-existing tags:
-          tag_value_lookup = tag_type.scoping { find_or_create_tags(tag_list) }
-          tags = tag_value_lookup.keys
+            options = {:scope => [:current, :children]}.update(scoping_options)
+            options[:scope] = Array(options[:scope]) + [:parents] # add in the parents because we need them later on down.
 
-          current_tags = tags_on(tag_type, :type => [:current, :parents, :children])
-          old_tags     = current_tags - tags
-          new_tags     = tags         - current_tags
+            current_tags = tags_on(tag_type, options)
+            old_tags     = current_tags - tags
+            new_tags     = tags         - current_tags
 
-          unowned_taggings = taggings.where(:tagger_id => nil)
+            unowned_taggings = taggings.where(:tagger_id => nil)
 
-          # If relevances are specified on current tags, make sure to update those 
-          tags_requiring_relevance_update = tag_value_lookup.map { |tag, value| tag if !value.relevance.nil? }.compact & current_tags
-          if tags_requiring_relevance_update.present? && (update_taggings = unowned_taggings.find_all_by_tag_id(tags_requiring_relevance_update)).present?
-            update_taggings.each { |tagging| tagging.update_attribute(:relevance, tag_value_lookup[tagging.tag].relevance) }
-          end
-
-          # Find and remove old taggings:
-          if old_tags.present? && (old_taggings = unowned_taggings.find_all_by_tag_id(old_tags)).present?
-            old_taggings.reject! do |tagging|
-              if tagging.tag.class > tag_type.klass! # parent of current tag type/class, make sure not to remove these taggings.
-                update_tagging_with_inherited_tag!(tagging, new_tags, tag_value_lookup)
-                true
-              end
+            # If relevances are specified on current tags, make sure to update those
+            tags_requiring_relevance_update = tag_value_lookup.map { |tag, value| tag if !value.relevance.nil? }.compact & current_tags
+            if tags_requiring_relevance_update.present? && (update_taggings = unowned_taggings.find_all_by_tag_id(tags_requiring_relevance_update)).present?
+              update_taggings.each { |tagging| tagging.update_attribute(:relevance, tag_value_lookup[tagging.tag].relevance) }
             end
-            Tagtical::Tagging.destroy_all :id => old_taggings.map(&:id) # Destroy old taggings:
-          end
 
-          new_tags.each do |tag|
-            taggings.create!(:tag_id => tag.id, :taggable => self, :relevance => tag_value_lookup[tag].relevance) # Create new taggings:
+            # Find and remove old taggings:
+            if old_tags.present? && (old_taggings = unowned_taggings.find_all_by_tag_id(old_tags)).present?
+              old_taggings.reject! do |tagging|
+                if tagging.tag.class > tag_type.klass! # parent of current tag type/class, make sure not to remove these taggings.
+                  update_tagging_with_inherited_tag!(tagging, new_tags, tag_value_lookup)
+                  true
+                end
+              end
+              Tagtical::Tagging.destroy_all :id => old_taggings.map(&:id) # Destroy old taggings:
+            end
+
+            new_tags.each do |tag|
+              taggings.create!(:tag_id => tag.id, :taggable => self, :relevance => tag_value_lookup[tag].relevance) # Create new taggings:
+            end
           end
         end
 
@@ -309,6 +309,26 @@ module Tagtical::Taggable
         if tags.present? && (tag = Tagtical::Tag.send(:detect_comparable, tags, tagging.tag.value))
           tagging.update_attributes!(:tag => tag, :relevance => tag_value_lookup[tag].relevance)
           tags.delete(tag)
+        end
+      end
+
+      # If cascade tag types are specified, it will attempt to look at Tag subclasses with
+      # possible_values and try to set those tag_lists with values from the possible_values list.
+      def cascade_set_tag_list!(tag_list, context, scoping_options)
+        if (cascade = scoping_options.delete(:cascade)) && (tag_type = tag_type(context)).klass
+          tag_types = cascade==true ? self.tag_types : Tagtical::Tag::Type[Array(cascade)]
+          tag_types.each do |t|
+            if t.klass && t.klass <= tag_type.klass && t.klass.possible_values
+              new_tag_list = Tagtical::TagList.new
+              tag_list.reject! do |elm|
+                if value = t.klass.detect_possible_value(elm)
+                  new_tag_list << value
+                  true
+                end
+              end
+              tag_list_cache_on(t)[scoping_options.merge(:scope => :==)] = new_tag_list if !new_tag_list.empty?
+            end
+          end
         end
       end
 

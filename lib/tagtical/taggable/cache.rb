@@ -16,12 +16,12 @@ module Tagtical::Taggable
     
     module ClassMethods
       def initialize_tagtical_cache
-        tag_types.map(&:to_s).each do |tag_type|
-          class_eval %(
+        tag_types.each do |tag_type|
+          class_eval <<-RUBY, __FILE__, __LINE__ + 1
             def self.caching_#{tag_type.singularize}_list?
               caching_tag_list_on?("#{tag_type}")
-            end        
-          )
+            end  
+          RUBY
         end        
       end
       
@@ -34,14 +34,13 @@ module Tagtical::Taggable
         column_names.include?("cached_#{context.to_s.singularize}_list")
       end
     end
-    
+
     module InstanceMethods      
       def save_cached_tag_list
         tag_types.each do |tag_type|
           if self.class.send("caching_#{tag_type.singularize}_list?")
-            if tag_list_cache_set_on?(tag_type)
-              list = tag_list_cache_on(tag_type.singularize).to_a.flatten.compact.join(', ')
-              self["cached_#{tag_type.singularize}_list"] = list
+            if tag_list = tag_list_cache_on(tag_type)[{}]
+              self[tag_type.tag_list_name(:cached)] = tag_list.to_a.flatten.compact.join(', ')
             end
           end
         end

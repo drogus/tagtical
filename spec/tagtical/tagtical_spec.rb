@@ -276,7 +276,7 @@ describe Tagtical do
       skills = @taggable_model.skills.find_all_by_value("pottery")
       skills.should have(1).items
       skills.first.relevance.should == 4.56
-      skills.first.should be_an_instance_of Tag::Craft
+      skills.first.should be_an_instance_of Tag::FooCraft
     end
 
   end

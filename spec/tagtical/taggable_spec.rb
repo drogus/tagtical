@@ -24,7 +24,7 @@ describe Tagtical::Taggable do
 
   it "should be able to create tags" do
     @taggable.skill_list = "ruby, rails, css"
-    @taggable.instance_variable_get("@skill_list").should be_an_instance_of(Tagtical::TagList)
+    @taggable.tag_list_cache_on(:skill)[{}].should be_an_instance_of(Tagtical::TagList)
 
     lambda { @taggable.save }.should change(Tagtical::Tag, :count).by(3)
 
@@ -72,6 +72,57 @@ describe Tagtical::Taggable do
 
   end
 
+  describe "#cascade_set_tag_list!" do
+    when_possible_values_specified(:values => %w{Knitting Ruby Pottery}, :klass => Tag::Skill) do
+      before do
+        @taggable.update_attributes!(:tag_list => "tree, train", :skill_list => "basketball", :craft_list => "pottery")
+        @taggable.reload
+      end
+
+      context "when :cascade => true" do
+        before do
+          @taggable.set_tag_list(["ruby", "plain"], :cascade => true)
+          @taggable.save!
+          @taggable.reload
+        end
+
+        specify do
+          @taggable.tag_list.should have_same_elements %w{Ruby plain}
+        end
+
+        it "should set value on skill" do
+          @taggable.skills.should have_only_tag_values %w{Ruby}
+        end
+
+        it "should remove all elements from craft" do
+          @taggable.crafts.should be_empty
+        end
+
+      end
+      
+      context "when :cascade => :craft" do
+        before do
+          @taggable.set_tag_list(["ruby", "plain"], :cascade => :craft)
+          @taggable.save!
+          @taggable.reload
+        end
+
+        specify do
+          @taggable.tag_list.should have_same_elements %w{Ruby plain}
+        end
+
+        it "should not have any tags on skills directly" do
+          @taggable.skills(:current).should be_empty
+        end
+
+        it "should have tags on crafts" do
+          @taggable.craft_list.should have_same_elements %w{Ruby}
+        end
+
+      end
+    end
+  end
+
   describe "tag retrieval with finder type conditions" do
     before do
       @taggables[0].tag_list = "bob"
@@ -84,35 +135,35 @@ describe Tagtical::Taggable do
     end
 
     it "should be able to query tags" do
-      @taggables[0].tags(:type => :current).should have_only_tag_values %w{bob}
-      @taggables[0].tags(:type => :==).should have_only_tag_values %w{bob}
+      @taggables[0].tags(:scope => :current).should have_only_tag_values %w{bob}
+      @taggables[0].tags(:scope => :==).should have_only_tag_values %w{bob}
       @taggables[0].tags.should have_only_tag_values %w{bob knitting ruby}
-      @taggables[0].tags(:type => :children).should have_only_tag_values %w{knitting ruby}
-      @taggables[0].tags(:type => :<).should have_only_tag_values %w{knitting ruby}
-      @taggables[1].crafts(:type => :parents).should have_only_tag_values %w{charlie css}
-      @taggables[1].crafts(:type => :>).should have_only_tag_values %w{charlie css}
+      @taggables[0].tags(:scope => :children).should have_only_tag_values %w{knitting ruby}
+      @taggables[0].tags(:scope => :<).should have_only_tag_values %w{knitting ruby}
+      @taggables[1].crafts(:scope => :parents).should have_only_tag_values %w{charlie css}
+      @taggables[1].crafts(:scope => :>).should have_only_tag_values %w{charlie css}
 
-      @taggables[1].crafts(:type => [:parents, :current]).should have_only_tag_values %w{charlie css pottery}
-      @taggables[1].crafts(:type => :>=).should have_only_tag_values %w{charlie css pottery}
-      @taggables[1].skills(:type => [:parents, :children]).should have_only_tag_values %w{charlie pottery}
-      @taggables[1].skills(:type => :"><").should have_only_tag_values %w{charlie pottery}
+      @taggables[1].crafts(:scope => [:parents, :current]).should have_only_tag_values %w{charlie css pottery}
+      @taggables[1].crafts(:scope => :>=).should have_only_tag_values %w{charlie css pottery}
+      @taggables[1].skills(:scope => [:parents, :children]).should have_only_tag_values %w{charlie pottery}
+      @taggables[1].skills(:scope => :"><").should have_only_tag_values %w{charlie pottery}
     end
 
     it "should be able to select taggables by subset of tags using ActiveRelation methods" do
       TaggableModel.with_tags("bob").should == [@taggables[0]]
       TaggableModel.with_skills("ruby").should == [@taggables[0]]
       TaggableModel.with_tags("rUBy").should == [@taggables[0]]
-      TaggableModel.with_tags("ruby", :type => :current).should == []
-      TaggableModel.with_tags("ruby", :type => :==).should == []
+      TaggableModel.with_tags("ruby", :scope => :current).should == []
+      TaggableModel.with_tags("ruby", :scope => :==).should == []
       TaggableModel.with_skills("knitting").should == [@taggables[0]]
-      TaggableModel.with_skills("KNITTING", :type => :current).should == []
-      TaggableModel.with_skills("KNITTING", :type => :==).should == []
-      TaggableModel.with_skills("knitting", :type => :parents).should == []
-      TaggableModel.with_skills("knitting", :type => :>).should == []
-      TaggableModel.with_tags("bob", :type => :current).should == [@taggables[0]]
-      TaggableModel.with_tags("bob", :type => :==).should == [@taggables[0]]
-      TaggableModel.with_skills("bob", :type => :parents).should == [@taggables[0]]
-      TaggableModel.with_skills("bob", :type => :>).should == [@taggables[0]]
+      TaggableModel.with_skills("KNITTING", :scope => :current).should == []
+      TaggableModel.with_skills("KNITTING", :scope => :==).should == []
+      TaggableModel.with_skills("knitting", :scope => :parents).should == []
+      TaggableModel.with_skills("knitting", :scope => :>).should == []
+      TaggableModel.with_tags("bob", :scope => :current).should == [@taggables[0]]
+      TaggableModel.with_tags("bob", :scope => :==).should == [@taggables[0]]
+      TaggableModel.with_skills("bob", :scope => :parents).should == [@taggables[0]]
+      TaggableModel.with_skills("bob", :scope => :>).should == [@taggables[0]]
       TaggableModel.with_crafts("knitting").should == [@taggables[0]]
     end
   end
@@ -211,12 +262,53 @@ describe Tagtical::Taggable do
 
   context "with inheriting tags classes" do
     before do
-      @top_level = Tagtical::Tag
-      @second_level = Tag::Skill
-      @third_level = Tag::Craft
+      @taggable.tag_list = "bob"
+      @taggable.skill_list = "ruby"
+      @taggable.craft_list = "knitting"
+      @taggable.save!
+      @taggable.reload
+    end
+
+    context "with tag_list options" do
+      it "should ignore tag subclasses with :scope => :current" do
+        @taggable.set_tag_list([], :scope => :current)
+        @taggable.save!
+        @taggable.reload
+
+        @taggable.tags(:current).should be_empty
+        @taggable.tags.should_not be_empty
+        @taggable.skills.should_not be_empty
+        @taggable.crafts.should_not be_empty
+      end
+    end
+
+    it "should have tag_lists with inheriting tags" do
+      @taggable.tag_list.should have_same_elements %w{bob ruby knitting}
+      @taggable.skill_list.should have_same_elements %w{ruby knitting}
+    end
+
+    it "should nullify out inheriting tags on tag_list setter" do
+      @taggable.tag_list = []
+      @taggable.save!
+      @taggable.reload
+
+      @taggable.tags.should be_empty
+      @taggable.skills.should be_empty
+      @taggable.crafts.should be_empty
+    end
+    
+    it "should nullify out inheriting tags on skill_list setter but keep the tags in the super class" do
+      @taggable.skill_list = []
+      @taggable.save!
+      @taggable.reload
+
+      @taggable.tags.should have_only_tag_values %w{bob}
+      @taggable.skills.should be_empty
+      @taggable.crafts.should be_empty
     end
 
     it "should not create tags on parent if children have the value" do
+      Tagtical::Tag.delete_all
       lambda {
         @taggable.skill_list = "pottery"
         @taggable.save!
@@ -227,7 +319,7 @@ describe Tagtical::Taggable do
 
       @taggable.reload
       @taggable.skills.should have(1).item
-      @taggable.skills.first.should be_an_instance_of Tag::Craft
+      @taggable.skills.first.should be_an_instance_of Tag::FooCraft
     end
 
   end
@@ -447,7 +539,7 @@ describe Tagtical::Taggable do
     end
 
     it "should preserve the tag type even though we tag on :tags" do
-      @model.tags.find_by_value("pottery").should be_an_instance_of(Tag::Craft)
+      @model.tags.find_by_value("pottery").should be_an_instance_of(Tag::FooCraft)
     end
 
     it "should support STI" do
@@ -455,6 +547,7 @@ describe Tagtical::Taggable do
       @model.owner_tags_on(@user1, :crafts).should == [tag]
       @model.owner_tags_on(@user1, :skills).should == [tag]
       @model.owner_tags_on(@user1, :tags).should include(tag)
+
     end
   end
 
