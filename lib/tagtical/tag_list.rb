@@ -2,7 +2,7 @@ module Tagtical
   class TagList < Array
     class TagValue < String
       attr_accessor :relevance
-      def initialize(value, relevance=nil)
+      def initialize(value="", relevance=nil)
         @relevance = relevance
         super(value.to_s)
       end
@@ -136,7 +136,7 @@ module Tagtical
     end
 
     def convert_tag_value(value)
-      value.is_a?(TagValue) ? value : TagValue.new(*value.split(":", 2).each(&:strip!))
+      value.is_a?(TagValue) ? value : TagValue.new(*value.to_s.split(":", 2).each(&:strip!))
     end
 
   end
