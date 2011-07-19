@@ -29,21 +29,22 @@ module Tagtical
       else
         write_inheritable_attribute(:tag_types, tag_types)
         class_inheritable_reader(:tag_types)
+
+        has_many :taggings, :as => :taggable, :dependent => :destroy, :include => :tag, :class_name => "Tagtical::Tagging"
+        has_many :tags, :through => :taggings, :class_name => "Tagtical::Tag"
         
         class_eval do
-          has_many :taggings, :as => :taggable, :dependent => :destroy, :include => :tag, :class_name => "Tagtical::Tagging"
-          has_many :tags, :through => :taggings, :class_name => "Tagtical::Tag"
-
           def self.taggable?
             true
           end
-        
-          include Tagtical::Taggable::Core
-          include Tagtical::Taggable::Collection
-          include Tagtical::Taggable::Cache
-          include Tagtical::Taggable::Ownership
-          include Tagtical::Taggable::Related
         end
+
+        include Tagtical::Taggable::Core
+        include Tagtical::Taggable::Collection
+        include Tagtical::Taggable::Cache
+        include Tagtical::Taggable::Ownership
+        include Tagtical::Taggable::Related
+        
       end
       
     end
