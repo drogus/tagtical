@@ -325,8 +325,13 @@ module Tagtical
       # Returns an array of potential class names for this specific type.
       def derive_class_candidates
         [].tap do |arr|
-          suffixes = [classify, "#{classify}Tag", "#{taggable_class}::#{classify}", "#{taggable_class}::#{classify}Tag"]
-          suffixes.each do |name| # support Interest and InterestTag class names.
+          suffixes = [classify]
+          klass = taggable_class
+          while klass < ActiveRecord::Base
+            suffixes << "#{klass}::#{classify}"
+            klass = klass.superclass
+          end
+          suffixes.map { |s| [s, "#{s}Tag"] }.flatten.each do |name| # support Interest and InterestTag class names.
             "Tagtical::Tag".tap do |longest_candidate|
               longest_candidate << "::#{name}" unless name=="Tag"
             end.scan(/^|::/) { arr << $' } # Klass, Tag::Klass, Tagtical::Tag::Klass
