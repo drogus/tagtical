@@ -495,7 +495,6 @@ describe Tagtical::Taggable do
     it "should be able to add on contexts only to some subclasses" do
       @inherited_different.part_list = "fork, spoon"
       @inherited_different.save
-      InheritingTaggableModel.tagged_with("fork", :on => :parts).should be_empty
       AlteredInheritingTaggableModel.tagged_with("fork", :on => :parts).first.should == @inherited_different
     end
 
@@ -555,34 +554,35 @@ describe Tagtical::Taggable do
     end
   end
 
-  it "should be able to set a custom tag context list" do
-    bob = TaggableModel.create(:name => "Bob")
-    bob.set_tag_list_on(:rotors, "spinning, jumping")
-    bob.tag_list_on(:rotors).should == ["spinning","jumping"]
-    bob.save
-    bob.reload
-    bob.tags_on(:rotors).should_not be_empty
-  end
 
   it "should be able to create tags through the tag list directly" do
-    @taggable.tag_list_on(:test).add("hello")
-    @taggable.tag_list_cache_on(:test).should_not be_empty
-    @taggable.tag_list_on(:test).should == ["hello"]
+    @taggable.tag_list_on(:skills).add("hello")
+    @taggable.tag_list_cache_on(:skills).should_not be_empty
+    @taggable.tag_list_on(:skills).should == ["hello"]
 
     @taggable.save
     @taggable.save_tags
 
     @taggable.reload
-    @taggable.tag_list_on(:test).should == ["hello"]
+    @taggable.tag_list_on(:skills).should == ["hello"]
   end
 
-  it "should be able to find tagged on a custom tag context" do
-    bob = TaggableModel.create(:name => "Bob")
-    bob.set_tag_list_on(:rotors, "spinning, jumping")
-    bob.tag_list_on(:rotors).should == ["spinning","jumping"]
-    bob.save
+    #it "should be able to set a custom tag context list" do
+  #  bob = TaggableModel.create(:name => "Bob")
+  #  bob.set_tag_list_on(:rotors, "spinning, jumping")
+  #  bob.tag_list_on(:rotors).should == ["spinning","jumping"]
+  #  bob.save
+  #  bob.reload
+  #  bob.tags_on(:rotors).should_not be_empty
+  #end
 
-    TaggableModel.tagged_with("spinning", :on => :rotors).to_a.should == [bob]
-  end
+  #it "should be able to find tagged on a custom tag context" do
+  #  bob = TaggableModel.create(:name => "Bob")
+  #  bob.set_tag_list_on(:rotors, "spinning, jumping")
+  #  bob.tag_list_on(:rotors).should == ["spinning","jumping"]
+  #  bob.save
+  #
+  #  TaggableModel.tagged_with("spinning", :on => :rotors).to_a.should == [bob]
+  #end
 
 end

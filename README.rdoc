@@ -13,8 +13,8 @@ as a designator for the STI class. Subsequently, you could also add a "relevance
 that mood is.
 
 Tagtical allows for an arbitrary number of Tag subclasses, each of which can be extended to the needs
-of the application. However, a tag subclass is not required! If you have many custom tag types that you
-create on the fly, you can wait until a later time to create a tag subclass.
+of the application. Note: Tag subclasses are required! You cannot do custom "contexts" as you could in
+acts_as_taggable_on/
 
 Here are the main differences between tagtical and acts_as_taggable_on:
 
@@ -34,6 +34,8 @@ parsed.
   Example:
     # would give you a tag of "red, blue" instead of "red" and "blue".
     tag_list.add("red, blue", :parse => false)
+
+7. Custom contexts are *not* supported since we use STI.
 
 Additions include:
 1. Scopes are created on Tag so you can do photo.tags.color and grab all the tags of type Tag::Color, for example.

@@ -68,7 +68,7 @@ module Tagtical::Taggable
         taggable_conditions  = sanitize_sql(["#{Tagtical::Tagging.table_name}.taggable_type = ?", base_class.name])
         taggable_conditions  << sanitize_sql([" AND #{Tagtical::Tagging.table_name}.taggable_id = ?", options.delete(:id)])  if options[:id]
 
-        sti_conditions = Tagtical::Tag::Type[options[:on]].finder_type_condition if options[:on]
+        sti_conditions = find_tag_type!(options[:on]).finder_type_condition if options[:on]
 
         tagging_conditions = [
           taggable_conditions,

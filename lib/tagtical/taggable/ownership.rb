@@ -37,8 +37,8 @@ module Tagtical::Taggable
       end
 
       def cached_owned_tag_list_on(context)
-        variable_name = tag_type(context).tag_list_ivar(:owned)
-        cache = instance_variable_get(variable_name) || instance_variable_set(variable_name, {})
+        variable_name = find_tag_type!(context).tag_list_ivar(:owned)
+        instance_variable_get(variable_name) || instance_variable_set(variable_name, {})
       end
 
       def owner_tag_list_on(owner, context)
@@ -79,7 +79,7 @@ module Tagtical::Taggable
             # Find and remove old taggings:
             if old_tags.present? && (old_taggings = owner_taggings(owner).find_all_by_tag_id(old_tags)).present?
               old_taggings.reject! do |tagging|
-                if tagging.tag.class > tag_type.klass! # parent of current tag type/class, make sure not to remove these taggings.
+                if tagging.tag.class > tag_type.klass # parent of current tag type/class, make sure not to remove these taggings.
                   update_tagging_with_inherited_tag!(tagging, new_tags, tag_value_lookup)
                   true
                 end

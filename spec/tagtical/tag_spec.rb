@@ -19,14 +19,6 @@ describe Tagtical::Tag do
 
   its(:type) { should be_nil }
 
-  describe ".find_sti_class" do
-    specify do
-      {"skill" => Tag::Skill, "tag" => @klass}.each do |arg, result|
-        @klass.send(:find_sti_class, arg).should == result
-      end
-    end
-  end
-
   describe "validations" do
 
     it "should require a value" do
@@ -75,7 +67,7 @@ describe Tagtical::Tag do
   describe ".type" do
 
     it "should accept :scope condition as argument" do
-      @klass::Type.any_instance.expects(:scoping).with(:key => :value, :scope => :>=)
+      @klass::Type.any_instance.expects(:scoping).with(:>=, {:key => :value})
       @klass.type(:skills, :">=", :key => :value)
     end
 
@@ -318,8 +310,9 @@ describe Tagtical::Tag do
 
   describe "Type" do
     before do
+      @taggable_model = TaggableModel
       @klass = @klass::Type
-      @type = @klass.new("skill")
+      @type = @klass.new("skill", @taggable_model)
     end
     subject { @type }
 
@@ -329,18 +322,18 @@ describe Tagtical::Tag do
     describe ".find" do
       it "converts string into correct format" do
         {"ClassNames" => "class_name", "photo_tags" => "photo", :photo => "photo"}.each do |input, result|
-          @klass.find(input).should == result
+          @klass.find(input, @taggable_model).should == result
         end
       end
     end
 
     describe ".[]" do
-      specify { @klass[@type].should equal @type }
-      specify { @klass["foo"].should be_a @klass }
+      specify { @klass[@type, @taggable_model].should equal @type }
+      specify { @klass["foo", @taggable_model].should be_a @klass }
     end
 
     describe "#==" do
-      {"foo" => false, "skill" => true, Tagtical::Tag::Type.new("skill") => true}.each do |obj, result|
+      {"foo" => false, "skill" => true, Tagtical::Tag::Type.new("skill", @taggable_class) => true}.each do |obj, result|
         specify { (subject==obj).should==result }
       end
     end
@@ -362,10 +355,11 @@ describe Tagtical::Tag do
 
     describe "#derive_class_candidates" do
       specify do
-        subject.send(:derive_class_candidates).should include(
-          "Tagtical::Tag::Skill", "Tag::Skill", "Skill",
-            "Tagtical::Tag::SkillTag", "Tag::SkillTag", "SkillTag"
-        )
+        subject.send(:derive_class_candidates).should == [
+          "Tagtical::Tag::TaggableModel::Skill", "Tagtical::Tag::TaggableModel::SkillTag",
+          "Tagtical::Tag::Skill", "Tagtical::Tag::SkillTag", "Tag::TaggableModel::SkillTag", "Tag::TaggableModel::Skill", "TaggableModel::SkillTag",
+          "Tag::SkillTag", "TaggableModel::Skill", "Tag::Skill",
+          "SkillTag", "Skill"]
       end
     end
 
@@ -379,7 +373,7 @@ describe Tagtical::Tag do
     end
 
     context "when type is 'Tag'" do
-      before { @type = @klass.new("tag") }
+      before { @type = @klass.new("tag", TaggableModel) }
       its(:klass) { should == Tagtical::Tag }
       its(:scope_name) { should == :tags }
     end
