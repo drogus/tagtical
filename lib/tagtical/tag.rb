@@ -226,7 +226,8 @@ module Tagtical
       #   <tt>sql</tt> - Set to true to return sql string. Set to :append to return a sql string which can be appended as a condition.
       #   <tt>only</tt> - An array of the following: :parents, :current, :children. Will construct conditions to query the current, parent, and/or children STI classes.
       #
-      def finder_type_condition(options={})
+      def finder_type_condition(*args)
+        options = convert_finder_type_arguments(*args)
         type = convert_type_options(options[:scope])
 
         # If we want [:current, :children] or [:current, :children, :parents] and we don't need the finder type condition,
@@ -269,9 +270,7 @@ module Tagtical
       #   scoping(:<=)
       #   scoping(:scoping => :<=)
       def scoping(*args, &block)
-        options = args.extract_options!
-        options[:scope] = args[0] if args[0]
-        finder_type_condition = finder_type_condition(options)
+        finder_type_condition = finder_type_condition(*args)
         if block_given?
           if finder_type_condition
             Tagtical::Tag.send(:with_scope, :find => Tagtical::Tag.where(finder_type_condition), :create => {:type => klass.sti_name}) do
@@ -365,7 +364,13 @@ module Tagtical
 
         raise("Cannot find tag class for type: #{self} with taggable class: #{taggable_class}")
       end
-    end
 
+      def convert_finder_type_arguments(*args)
+        options = args.extract_options!
+        options[:scope] = args[0] if args[0] # allow for adding this in the front
+        options
+      end
+
+    end
   end
 end

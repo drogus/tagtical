@@ -34,17 +34,17 @@ module Tagtical::Taggable
               tagged_with(tags.flatten, options.merge(:on => :#{tag_type}))
             end
 
-            def #{tag_type}_list(scoping_options={})
-              tag_list_on('#{tag_type}', scoping_options)
+            def #{tag_type}_list(*args)
+              tag_list_on('#{tag_type}', *args)
             end
 
-            def #{tag_type}_list=(new_tags, scoping_options={})
-              set_tag_list_on('#{tag_type}', new_tags, scoping_options)
+            def #{tag_type}_list=(new_tags, *args)
+              set_tag_list_on('#{tag_type}', new_tags, *args)
             end
             alias set_#{tag_type}_list #{tag_type}_list=
 
-            def all_#{tag_type.pluralize}_list(scoping_options={})
-              all_tags_list_on('#{tag_type}', scoping_options)
+            def all_#{tag_type.pluralize}_list(*args)
+              all_tags_list_on('#{tag_type}', *args)
             end
           RUBY
 
@@ -203,14 +203,14 @@ module Tagtical::Taggable
       ##
       # model.set_tag_list_on("skill", ["kung fu", "karate"]) # will overwrite tags from inheriting tag classes
       # model.set_tag_list_on("skill", ["kung fu", "karate"], :scope => :==) # will not overwrite tags from inheriting tag classes
-      def set_tag_list_on(context, new_list, scoping_options={})
+      def set_tag_list_on(context, new_list, *args)
         tag_list = Tagtical::TagList.from(new_list)
-        cascade_set_tag_list!(tag_list, context, scoping_options)
-        tag_list_cache_on(context)[scoping_options] = tag_list
+        cascade_set_tag_list!(tag_list, context, *args)
+        tag_list_cache_on(context)[scoping_options(context, *args)] = tag_list
       end
 
-      def tag_list_on(context, scoping_options={})
-        tag_list_cache_on(context)[scoping_options] ||= Tagtical::TagList.new(tags_on(context, scoping_options).map(&:value))
+      def tag_list_on(context, *args)
+        tag_list_cache_on(context)[scoping_options(context, *args)] ||= Tagtical::TagList.new(tags_on(context, *args).map(&:value))
       end
 
       def tag_list_cache_on(context, prefix=nil)
@@ -218,14 +218,14 @@ module Tagtical::Taggable
         instance_variable_get(variable) || instance_variable_set(variable, {})
       end
 
-      def all_tags_list_on(context, scoping_options={})
-        tag_list_cache_on(context, :all)[scoping_options] ||= Tagtical::TagList.new(all_tags_on(context, scoping_options).map(&:value)).freeze
+      def all_tags_list_on(context, *args)
+        tag_list_cache_on(context, :all)[scoping_options(context, *args)] ||= Tagtical::TagList.new(all_tags_on(context, *args).map(&:value)).freeze
       end
 
       ##
       # Returns all tags of a given context
-      def all_tags_on(context, scoping_options={})
-        scope = tag_scope(context, scoping_options)
+      def all_tags_on(context, *args)
+        scope = tag_scope(context, *args)
         if Tagtical::Tag.using_postgresql?
           group_columns = grouped_column_names_for(Tagtical::Tag)
           scope = scope.order("max(#{Tagtical::Tagging.table_name}.created_at)").group(group_columns)
@@ -237,8 +237,8 @@ module Tagtical::Taggable
 
       ##
       # Returns all tags that aren't owned.
-      def tags_on(context, scoping_options={})
-        tag_scope(context, scoping_options).where("#{Tagtical::Tagging.table_name}.tagger_id IS NULL").all
+      def tags_on(context, *args)
+        tag_scope(context, *args).where("#{Tagtical::Tagging.table_name}.tagger_id IS NULL").all
       end
 
       def reload(*args)
@@ -298,12 +298,16 @@ module Tagtical::Taggable
 
       private
 
-      def tag_scope(input, options={})
-        tags.where(find_tag_type!(input).finder_type_condition(options))
+      def tag_scope(input, *args)
+        tags.where(find_tag_type!(input).finder_type_condition(*args))
       end
 
       def find_tag_type!(input)
         (@tag_type ||= {})[input] ||= self.class.find_tag_type!(input)
+      end
+
+      def scoping_options(input, *args)
+        find_tag_type!(input).send(:convert_finder_type_arguments, *args)
       end
 
       # Lets say tag class A inherits from B and B has a tag with value "foo". If we tag A with value "foo",
@@ -317,7 +321,8 @@ module Tagtical::Taggable
 
       # If cascade tag types are specified, it will attempt to look at Tag subclasses with
       # possible_values and try to set those tag_lists with values from the possible_values list.
-      def cascade_set_tag_list!(tag_list, context, scoping_options)
+      def cascade_set_tag_list!(tag_list, context, *args)
+        scoping_options = scoping_options(context, *args)
         if (cascade = scoping_options.delete(:cascade)) && (tag_type = find_tag_type!(context)).klass
           tag_types = cascade==true ? self.tag_types : Array(cascade).map { |c| find_tag_type!(c) }
           tag_types.each do |t|
