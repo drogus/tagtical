@@ -68,6 +68,12 @@ describe Tagtical::TagList do
     @tag_list.detect { |t| t=="crazy" }.relevance.should == 0.45
   end
 
+  it "should be able to add relevances with a string" do
+    @tag_list.add("foo : 3.4, bar: 2.5")
+    @tag_list.detect { |t| t=="foo" }.relevance.should == 3.4
+    @tag_list.detect { |t| t=="bar" }.relevance.should == 2.5
+  end
+
   it "should be able to remove words" do
     @tag_list.remove("awesome")
     @tag_list.include?("awesome").should be_false
@@ -84,6 +90,19 @@ describe Tagtical::TagList do
   end
 
   its(:to_s) { should == "awesome, radical" }
+
+  describe "#to_s" do
+    before { @tag_list = Tagtical::TagList.new("far", "awesome : 4", "radical : 3", "car, bar:10.3", :parse => false) }
+    
+    it "should contain relevance with the relevance delimiter" do
+      @tag_list.to_s.should include("awesome:4.0, radical:3.0")
+    end
+
+    it "should keep quotations in words when parse is false" do
+      @tag_list.to_s.should include(%{"car, bar":10.3})
+    end
+
+  end
 
   it "should quote escape tags with commas in them" do
     @tag_list.add("cool","rad,bodacious", :parse => false)
