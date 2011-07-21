@@ -42,11 +42,8 @@ describe "acts_as_tagger" do
         @taggable = TaggableModel.new(:name=>"Richard Prior")
       end
 
-      it "should by default not throw an exception " do
-        @taggable.tag_list_on(:foo).should be_empty
-        lambda {
-          @tagger.tag(@taggable, :with=>'this, and, that', :on=>:foo)
-        }.should_not raise_error
+      it "should raise an exception" do
+        lambda { @taggable.tag_list_on(:foo) }.should raise_error
       end
 
       it "should show all the tag list when both public and owned tags exist" do
@@ -54,7 +51,7 @@ describe "acts_as_tagger" do
         @tagger.tag(@taggable, :with => 'java, lisp', :on => :tags)
         @taggable.all_tags_on(:tags).map(&:value).sort.should == %w(ruby python java lisp).sort
       end
-      
+
       it "should not add owned tags to the common list" do
         @taggable.tag_list = 'ruby, python'
         @tagger.tag(@taggable, :with => 'java, lisp', :on => :tags)
@@ -62,7 +59,7 @@ describe "acts_as_tagger" do
         @tagger.tag(@taggable, :with => '', :on => :tags)
         @taggable.tag_list.should == %w(ruby python)
       end
-      
+
     end
 
     describe "when called by multiple tagger's" do

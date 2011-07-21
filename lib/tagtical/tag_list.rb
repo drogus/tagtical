@@ -1,18 +1,25 @@
 module Tagtical
   class TagList < Array
     class TagValue < String
+
       attr_accessor :relevance
+
+      cattr_accessor :relevance_delimiter
+      self.relevance_delimiter = ':'
+
       def initialize(value="", relevance=nil)
-        @relevance = relevance
-        super(value.to_s)
+        @relevance = relevance.to_f if relevance
+        super(value)
       end
+
+      def self.parse(input)
+        new(*input.to_s.split(relevance_delimiter, 2).each(&:strip!))
+      end
+      
     end
 
     cattr_accessor :delimiter
     self.delimiter = ','
-
-    cattr_accessor :relevance_delimiter
-    self.relevance_delimiter = ':'
 
     cattr_accessor :value_quotes
     self.value_quotes = ["'", "\""]
@@ -79,12 +86,13 @@ module Tagtical
     #   tag_list = TagList.new("Round", "Square,Cube")
     #   tag_list.to_s # 'Round, "Square,Cube"'
     def to_s
-      tags = frozen? ? self.dup : self
-      tags.send(:clean!)
+      tag_list = frozen? ? self.dup : self
+      tag_list.send(:clean!)
 
-      tags.map do |value|
-        value.include?(delimiter) ? "\"#{value}\"" : value
-      end.join(delimiter.ends_with?(" ") ? delimiter : "#{delimiter} ")
+      tag_list.map do |tag_value|
+        value = tag_value.include?(delimiter) ? %{"#{tag_value}"} : tag_value
+        [value, tag_value.relevance].compact.join(TagValue.relevance_delimiter)
+      end.join(delimiter.gsub(/(\S)$/, '\1 '))
     end
 
     # Builds an option statement for an ActiveRecord table.
@@ -136,7 +144,7 @@ module Tagtical
     end
 
     def convert_tag_value(value)
-      value.is_a?(TagValue) ? value : TagValue.new(*value.to_s.split(":", 2).each(&:strip!))
+      value.is_a?(TagValue) ? value : TagValue.parse(value)
     end
 
   end

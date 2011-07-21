@@ -5,6 +5,10 @@ describe Tagtical do
     clean_database!
   end
 
+  # We don't want to be calling "acts_as_tagable" on TaggableModel which get's used in other tests!
+  class JunkTaggableModel < TaggableModel
+  end
+
   it "should provide a class method 'taggable?' that is false for untaggable models" do
     UntaggableModel.should_not be_taggable
   end
@@ -12,9 +16,9 @@ describe Tagtical do
   describe "Taggable Method Generation" do
     before(:each) do
       clean_database!
-      TaggableModel.write_inheritable_attribute(:tag_types, [])
-      TaggableModel.acts_as_taggable(:tags, :languages, :skills, :needs, :offerings)
-      @taggable = TaggableModel.new(:name => "Bob Jones")
+      JunkTaggableModel.write_inheritable_attribute(:tag_types, [])
+      JunkTaggableModel.acts_as_taggable(:tags, :languages, :skills, :needs, :offerings)
+      @taggable = JunkTaggableModel.new(:name => "Bob Jones")
     end
 
     it "should respond 'true' to taggable?" do
@@ -30,7 +34,7 @@ describe Tagtical do
     end
 
     it "should have all tag types" do
-      @taggable.tag_types.should == [:tags, :languages, :skills, :needs, :offerings]
+      @taggable.tag_types.should == ["tag", "language", "skill", "need", "offering"]
     end
 
     it "should generate an association for each tag type" do
@@ -38,11 +42,11 @@ describe Tagtical do
     end
 
     it "should add tagged_with and tag_counts to singleton" do
-      TaggableModel.should respond_to(:tagged_with, :tag_counts)
+      JunkTaggableModel.should respond_to(:tagged_with, :tag_counts)
     end
 
     it "should generate methods for each tag_type" do
-      TaggableModel.should respond_to(:with_tags, :with_languages, :with_skills, :with_needs, :with_offerings)
+      JunkTaggableModel.should respond_to(:with_tags, :with_languages, :with_skills, :with_needs, :with_offerings)
     end
 
     it "should generate a tag_list accessor/setter for each tag type" do
@@ -186,59 +190,59 @@ describe Tagtical do
 
   describe 'Tagging Contexts' do
     it 'should eliminate duplicate tagging contexts ' do
-      TaggableModel.acts_as_taggable(:skills, :skills)
-      TaggableModel.tag_types.freq["skill"].should == 1
+      JunkTaggableModel.acts_as_taggable(:skills, :skills)
+      JunkTaggableModel.tag_types.freq["skill"].should == 1
     end
 
     it "should not contain embedded/nested arrays" do
-      TaggableModel.acts_as_taggable([:skills], [:skills])
-      TaggableModel.tag_types.freq[[:skills]].should == 0
+      JunkTaggableModel.acts_as_taggable([:skills], [:skills])
+      JunkTaggableModel.tag_types.freq[[:skills]].should == 0
     end
 
     it "should _flatten_ the content of arrays" do
-      TaggableModel.acts_as_taggable([:skills], [:skills])
-      TaggableModel.tag_types.freq["skill"].should == 1
+      JunkTaggableModel.acts_as_taggable([:skills], [:skills])
+      JunkTaggableModel.tag_types.freq["skill"].should == 1
     end
 
-    it "should support tag_types without an associated Tag subclass" do
-      lambda { TaggableModel.acts_as_taggable(:doesnt_exist) }.should_not raise_error
-    end
+   # it "should support tag_types without an associated Tag subclass" do
+   #   lambda { JunkTaggableModel.acts_as_taggable(:doesnt_exist) }.should_not raise_error
+   # end
 
     it "should not raise an error when passed nil" do
       lambda {
-        TaggableModel.acts_as_taggable()
+        JunkTaggableModel.acts_as_taggable()
       }.should_not raise_error
     end
 
     it "should not raise an error when passed [nil]" do
       lambda {
-        TaggableModel.acts_as_taggable([nil])
+        JunkTaggableModel.acts_as_taggable([nil])
       }.should_not raise_error
     end
 
-    context "when Tag subclass is not present" do
-
-      before do
-        TaggableModel.acts_as_taggable(:machines)
-        @taggable_model = TaggableModel.create!(:name => "Taggable 1", :tag_list => "random, tags")
-        @taggable_model.machine_list = "car, plane, train"
-        @taggable_model.save!
-        @taggable_model.reload
-        @tag_type = @taggable_model.tag_types.find { |t| t=="machine" }
-      end
-
-      specify { @tag_type.klass.should be_nil }
-
-      it "should have basic tagging methods" do
-        @taggable_model.machines.map(&:value).sort.should == ["car", "plane", "train"]
-        @taggable_model.tags.machines.map(&:value).sort.should == ["car", "plane", "train"]
-      end
-
-      it "should instantiate with Tagtical::Tag" do
-        @taggable_model.machines.each { |tag| tag.should be_an_instance_of Tagtical::Tag }
-      end
-
-    end
+    #context "when Tag subclass is not present" do
+    #
+    #  before do
+    #    TaggableModel.acts_as_taggable(:machines)
+    #    @taggable_model = TaggableModel.create!(:name => "Taggable 1", :tag_list => "random, tags")
+    #    @taggable_model.machine_list = "car, plane, train"
+    #    @taggable_model.save!
+    #    @taggable_model.reload
+    #    @tag_type = @taggable_model.tag_types.find { |t| t=="machine" }
+    #  end
+    #
+    #  specify { @tag_type.klass.should be_nil }
+    #
+    #  it "should have basic tagging methods" do
+    #    @taggable_model.machines.map(&:value).sort.should == ["car", "plane", "train"]
+    #    @taggable_model.tags.machines.map(&:value).sort.should == ["car", "plane", "train"]
+    #  end
+    #
+    #  it "should instantiate with Tagtical::Tag" do
+    #    @taggable_model.machines.each { |tag| tag.should be_an_instance_of Tagtical::Tag }
+    #  end
+    #
+    #end
   end
 
   describe "Tagging with Symbols" do

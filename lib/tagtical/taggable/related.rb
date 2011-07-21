@@ -47,7 +47,7 @@ module Tagtical::Taggable
         group_columns = Tagtical::Tag.using_postgresql? ? grouped_column_names_for(klass) : "#{klass.table_name}.#{klass.primary_key}"
 
         conditions = ["#{exclude_self} #{klass.table_name}.id = #{Tagtical::Tagging.table_name}.taggable_id AND #{Tagtical::Tagging.table_name}.taggable_type = '#{klass.to_s}' AND #{Tagtical::Tagging.table_name}.tag_id = #{Tagtical::Tag.table_name}.id AND #{Tagtical::Tag.table_name}.value IN (?)", tags_to_find]
-        conditions[0] << tag_type(options.delete(:result_context)).finder_type_condition(:sql => :append).to_s if options[:result_context]
+        conditions[0] << find_tag_type!(options.delete(:result_context)).finder_type_condition(:sql => :append).to_s if options[:result_context]
                 
         klass.scoped({ :select     => "#{klass.table_name}.*, COUNT(#{Tagtical::Tag.table_name}.id) AS count",
                        :from       => "#{klass.table_name}, #{Tagtical::Tag.table_name}, #{Tagtical::Tagging.table_name}",
