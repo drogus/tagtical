@@ -24,7 +24,7 @@ describe Tagtical::Taggable do
 
   it "should be able to create tags" do
     @taggable.skill_list = "ruby, rails, css"
-    @taggable.tag_list_cache_on(:skill)[{}].should be_an_instance_of(Tagtical::TagList)
+    @taggable.tag_list_cache_on(:skill)[[:children, :current]].should be_an_instance_of(Tagtical::TagList)
 
     lambda { @taggable.save }.should change(Tagtical::Tag, :count).by(3)
 
@@ -127,7 +127,7 @@ describe Tagtical::Taggable do
     end
   end
 
-  describe "tag retrieval with finder type conditions" do
+  describe "tag_list scoping behavior" do
     before do
       @taggables[0].tag_list = "bob"
       @taggables[1].tag_list = "charlie"
@@ -136,15 +136,35 @@ describe Tagtical::Taggable do
       @taggables[0].craft_list = "knitting"
       @taggables[1].craft_list = "pottery"
       @taggables.each(&:save!)
+      @taggables.each(&:reload)
+    end
+
+    it "should empty out inheriting tags" do
+      @taggables[0].tag_list = []
+      @taggables[0].save!
+      @taggables[0].reload
+
+      @taggables[0].crafts.should be_empty
+    end
+
+    it "should not empty out 'tag' type when :current scope" do
+      @taggables[0].set_tag_list([], :current)
+      @taggables[0].save!
+      @taggables[0].reload
+
+      @taggables[0].tags.should_not be_empty
+      @taggables[0].tags(:current).should be_empty
+      @taggables[0].skills.should_not be_empty
+      @taggables[0].crafts.should_not be_empty
     end
 
     it "should be able to query tags" do
       @taggables[0].tags(:scope => :current).should have_only_tag_values %w{bob}
-      @taggables[0].tags(:scope => :==).should have_only_tag_values %w{bob}
+      @taggables[0].tags(:==).should have_only_tag_values %w{bob}
       @taggables[0].tags.should have_only_tag_values %w{bob knitting ruby}
       @taggables[0].tags(:scope => :children).should have_only_tag_values %w{knitting ruby}
       @taggables[0].tags(:scope => :<).should have_only_tag_values %w{knitting ruby}
-      @taggables[1].crafts(:scope => :parents).should have_only_tag_values %w{charlie css}
+      @taggables[1].crafts(:parents).should have_only_tag_values %w{charlie css}
       @taggables[1].crafts(:scope => :>).should have_only_tag_values %w{charlie css}
 
       @taggables[1].crafts(:scope => [:parents, :current]).should have_only_tag_values %w{charlie css pottery}
@@ -446,14 +466,22 @@ describe Tagtical::Taggable do
 
   describe "Associations" do
     before(:each) do
-      @taggable = TaggableModel.create(:tag_list => "awesome, epic")
+      @taggable = TaggableModel.create(:tag_list => "awesome, epic", :skill_list => "basketball, hiking, boxing")
     end
 
     it "should not remove tags when creating associated objects" do
       @taggable.untaggable_models.create!
       @taggable.reload
-      @taggable.tag_list.should have(2).items
+      @taggable.tag_list.should have(5).items
     end
+
+    its "tag_list methods should accept scope arguments" do
+      @taggable.tag_list(:current).should have(2).items
+      @taggable.skill_list(:parents).should have(2).items
+      @taggable.skill_list(:current).should have(3).items
+      @taggable.tag_list(:current, :children).should have(5).items
+    end
+
   end
 
   describe "grouped_column_names_for method" do

@@ -227,25 +227,24 @@ module Tagtical
       #   <tt>only</tt> - An array of the following: :parents, :current, :children. Will construct conditions to query the current, parent, and/or children STI classes.
       #
       def finder_type_condition(*args)
-        options = convert_finder_type_arguments(*args)
-        type = convert_type_options(options[:scope])
+        scopes, options = convert_finder_type_arguments(*args)
 
         # If we want [:current, :children] or [:current, :children, :parents] and we don't need the finder type condition,
         # then that means we don't need a condition at all since we are at the top-level sti class and we are essentially
         # searching the whole range of sti classes.
         if klass && !klass.finder_needs_type_condition?
-          type.delete(:parents) # we are at the topmost level.
-          type = [] if type==[:current, :children] # no condition is required if we want the current AND the children.
+          scopes.delete(:parents) # we are at the topmost level.
+          scopes = [] if scopes.sort==[:current, :children].sort # no condition is required if we want the current AND the children.
         end
 
         sti_names = []
-        if type.include?(:current)
+        if scopes.include?(:current)
           sti_names << klass.sti_name
         end
-        if type.include?(:children) && klass
+        if scopes.include?(:children) && klass
           sti_names.concat(klass.descendants.map(&:sti_name))
         end
-        if type.include?(:parents) && klass # include searches up the STI chain
+        if scopes.include?(:parents) && klass # include searches up the STI chain
           parent_class = klass.superclass
           while parent_class <= Tagtical::Tag
             sti_names << parent_class.sti_name
@@ -340,8 +339,8 @@ module Tagtical
       end
 
       # Take operator types (ie <, >, =) and convert them into :children, :current, or :parents.
-      def convert_type_options(input)
-        Array.wrap(input || (klass ? [:current, :children] : :current)).map do |type, i|
+      def convert_scope_options(input)
+        Array.wrap(input || [:current, :children]).map do |type|
           if (t = type.to_s)=~/^[=><]+$/
             {"=" => :current, ">" => :parents, "<" => :children}.map do |operator, val|
               val if t.include?(operator)
@@ -372,8 +371,8 @@ module Tagtical
 
       def convert_finder_type_arguments(*args)
         options = args.extract_options!
-        options[:scope] = args[0] if args[0] # allow for adding this in the front
-        options
+        scopes = convert_scope_options(args.presence || options[:scope])
+        [scopes, options]
       end
 
     end

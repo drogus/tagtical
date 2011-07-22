@@ -1,7 +1,11 @@
 require File.expand_path('../../spec_helper', __FILE__)
 
 describe Tagtical::TagList do
-  before { @tag_list = Tagtical::TagList.new("awesome", "radical") }
+  before do
+    @klass = Tagtical::TagList
+    @tag_list = @klass.new("awesome", "radical")
+  end
+
   subject { @tag_list }
 
   it { should be_an Array }
@@ -70,8 +74,23 @@ describe Tagtical::TagList do
 
   it "should be able to add relevances with a string" do
     @tag_list.add("foo : 3.4, bar: 2.5")
-    @tag_list.detect { |t| t=="foo" }.relevance.should == 3.4
-    @tag_list.detect { |t| t=="bar" }.relevance.should == 2.5
+    @tag_list.find("foo").relevance.should == 3.4
+    @tag_list.find("bar").relevance.should == 2.5
+  end
+
+  it "should be able to add a symbol" do
+    @tag_list.add(:car)
+    @tag_list.find("car").should_not be_nil
+  end
+
+  it "should be able to add a list of tags" do
+    tags = [["foo", 1],["bar", 1.3],["car", 0.7]].map do |value, relevance|
+      Tagtical::Tag.new(:value => value).tap { |t| t["relevance"] = relevance }
+    end
+    @tag_list.add(tags)
+    tags.each do |tag|
+      @tag_list.find(tag.value).relevance.should == tag.relevance
+    end
   end
 
   it "should be able to remove words" do
@@ -92,7 +111,13 @@ describe Tagtical::TagList do
   its(:to_s) { should == "awesome, radical" }
 
   describe "#to_s" do
-    before { @tag_list = Tagtical::TagList.new("far", "awesome : 4", "radical : 3", "car, bar:10.3", :parse => false) }
+    before do
+      @tag_list = Tagtical::TagList.new("far", "awesome : 4", "radical : 3", "car, bar:10.3", :parse => false)
+      @taggable = TaggableModel.new("taggable")
+      @taggable.set_tag_list "retro: 6, car:4, nature, test: 2.7 ", :cascade => true
+      @taggable.save
+      @taggable.reload
+    end
     
     it "should contain relevance with the relevance delimiter" do
       @tag_list.to_s.should include("awesome:4.0, radical:3.0")
@@ -100,6 +125,10 @@ describe Tagtical::TagList do
 
     it "should keep quotations in words when parse is false" do
       @tag_list.to_s.should include(%{"car, bar":10.3})
+    end
+
+    it "should include relevance in string" do
+      @taggable.tag_list.to_s.should == "retro:6.0, car:4.0, nature:1.0, test:2.7"
     end
 
   end

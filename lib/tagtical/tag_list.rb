@@ -49,6 +49,11 @@ module Tagtical
     end
     alias << push
 
+    # Shorthand
+    def find(value)
+      detect { |t| t==value }
+    end
+
     ##
     # Add tags to the tag_list. Duplicate or blank tags will be ignored.
     # Use the <tt>:parse</tt> option to add an unparsed tag string.
@@ -120,26 +125,35 @@ module Tagtical
       args.flatten!
     end
 
+    # Returns an array by parsing the input.
     def extract(input, options={})
       case input
+      when Tagtical::Tag
+        TagValue.new(input.value, input.relevance)
       when String
-        if !input.include?(delimiter) || options[:parse]==false
-          [input]
-        else
-          input, arr = input.dup, []
+        [].tap do |arr|
+          if !input.include?(delimiter) || options[:parse]==false
+            arr << input
+          else
+            input = input.dup
 
-          # Parse the quoted tags
-          value_quotes.each do |value_quote|
-            input.gsub!(/(\A|#{delimiter})\s*#{value_quote}(.*?)#{value_quote}\s*(#{delimiter}\s*|\z)/) { arr << $2 ; $3 }
+            # Parse the quoted tags
+            value_quotes.each do |value_quote|
+              input.gsub!(/(\A|#{delimiter})\s*#{value_quote}(.*?)#{value_quote}\s*(#{delimiter}\s*|\z)/) { arr << $2 ; $3 }
+            end
+
+            # Parse the unquoted tags
+            input.split(delimiter).each { |word| arr << word.strip }
           end
-
-          # Parse the unquoted tags
-          arr.concat(input.split(delimiter).each(&:strip!))
         end
       when Hash
         input.map { |value, relevance| TagValue.new(value, relevance) }
       when Array
-        input
+        input.map { |value| extract(value) }
+      when Symbol # put at the end, rare case
+        extract(input.to_s)
+      else
+        raise("Cannot parse: #{input.inspect}")
       end
     end
 

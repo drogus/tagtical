@@ -83,7 +83,7 @@ module Tagtical::Taggable
       end
 
       def find_tag_type!(input)
-        tag_types.find { |t| t.match?(input) } || raise("Cannot find tag type:'#{input}' in #{tag_types.inspect}")
+        (@tag_type ||= {})[input] ||= tag_types.find { |t| t.match?(input) } || raise("Cannot find tag type:'#{input}' in #{tag_types.inspect}")
       end
 
       ##
@@ -206,11 +206,11 @@ module Tagtical::Taggable
       def set_tag_list_on(context, new_list, *args)
         tag_list = Tagtical::TagList.from(new_list)
         cascade_set_tag_list!(tag_list, context, *args)
-        tag_list_cache_on(context)[scoping_options(context, *args)] = tag_list
+        tag_list_cache_on(context)[scopes_for_tag_list(context, *args)] = tag_list
       end
 
       def tag_list_on(context, *args)
-        tag_list_cache_on(context)[scoping_options(context, *args)] ||= Tagtical::TagList.new(tags_on(context, *args).map(&:value))
+        tag_list_cache_on(context)[scopes_for_tag_list(context, *args)] ||= Tagtical::TagList.new(tags_on(context, *args))
       end
 
       def tag_list_cache_on(context, prefix=nil)
@@ -219,7 +219,7 @@ module Tagtical::Taggable
       end
 
       def all_tags_list_on(context, *args)
-        tag_list_cache_on(context, :all)[scoping_options(context, *args)] ||= Tagtical::TagList.new(all_tags_on(context, *args).map(&:value)).freeze
+        tag_list_cache_on(context, :all)[scopes_for_tag_list(context, *args)] ||= Tagtical::TagList.new(all_tags_on(context, *args)).freeze
       end
 
       ##
@@ -254,17 +254,16 @@ module Tagtical::Taggable
         # Do the classes from top to bottom. We want the list from "tag" to run before "sub_tag" runs.
         # Otherwise, we will end up removing taggings from "sub_tag" since they aren't on "tag'.
         tag_types.sort_by(&:active_record_sti_level).each do |tag_type|
-          (tag_list_cache_on(tag_type) || {}).each do |scoping_options, tag_list|
+          (tag_list_cache_on(tag_type) || {}).each do |scopes, tag_list|
+            # Tag list saving only runs if its affecting the current scope or the current and children scope
+            next unless [:<=, :==].any? { |scope| scopes_for_tag_list(tag_type, scope)==scopes }
             tag_list = tag_list.uniq
 
             # Find existing tags or create non-existing tags:
             tag_value_lookup = tag_type.scoping { find_or_create_tags(tag_list) }
             tags = tag_value_lookup.keys
 
-            options = {:scope => [:current, :children]}.update(scoping_options)
-            options[:scope] = Array(options[:scope]) + [:parents] # add in the parents because we need them later on down.
-
-            current_tags = tags_on(tag_type, options)
+            current_tags = tags_on(tag_type, *[:parents].concat(scopes)) # add in the parents because we need them later on down.
             old_tags     = current_tags - tags
             new_tags     = tags         - current_tags
 
@@ -291,6 +290,9 @@ module Tagtical::Taggable
               taggings.create!(:tag_id => tag.id, :taggable => self, :relevance => tag_value_lookup[tag].relevance) # Create new taggings:
             end
           end
+          
+          # Force tag lists to reload to integrate any new tags from inheritance.
+          remove_tag_caches_on(tag_type)
         end
 
         true
@@ -298,16 +300,27 @@ module Tagtical::Taggable
 
       private
 
+      def remove_tag_caches_on(tag_type)
+        [nil, :all].each do |prefix|
+          ivar = tag_type.tag_list_ivar(prefix)
+          remove_instance_variable(ivar) if instance_variable_defined?(ivar)
+        end
+      end
+
       def tag_scope(input, *args)
         tags.where(find_tag_type!(input).finder_type_condition(*args))
       end
 
       def find_tag_type!(input)
-        (@tag_type ||= {})[input] ||= self.class.find_tag_type!(input)
+        self.class.find_tag_type!(input)
       end
 
-      def scoping_options(input, *args)
+      def finder_type_arguments_for_tag_list(input, *args)
         find_tag_type!(input).send(:convert_finder_type_arguments, *args)
+      end
+
+      def scopes_for_tag_list(*args)
+        finder_type_arguments_for_tag_list(*args)[0].sort
       end
 
       # Lets say tag class A inherits from B and B has a tag with value "foo". If we tag A with value "foo",
@@ -322,8 +335,9 @@ module Tagtical::Taggable
       # If cascade tag types are specified, it will attempt to look at Tag subclasses with
       # possible_values and try to set those tag_lists with values from the possible_values list.
       def cascade_set_tag_list!(tag_list, context, *args)
-        scoping_options = scoping_options(context, *args)
-        if (cascade = scoping_options.delete(:cascade)) && (tag_type = find_tag_type!(context)).klass
+        scopes, options = finder_type_arguments_for_tag_list(context, *args)
+        raise("You must include children if you are cascading") if options[:cascade] && !scopes.include?(:current)
+        if (cascade = options.delete(:cascade)) && (tag_type = find_tag_type!(context)).klass
           tag_types = cascade==true ? self.tag_types : Array(cascade).map { |c| find_tag_type!(c) }
           tag_types.each do |t|
             if t.klass && t.klass <= tag_type.klass && t.klass.possible_values
@@ -334,7 +348,7 @@ module Tagtical::Taggable
                   true
                 end
               end
-              tag_list_cache_on(t)[scoping_options.merge(:scope => :==)] = new_tag_list if !new_tag_list.empty?
+              tag_list_cache_on(t)[[:current]] = new_tag_list if !new_tag_list.empty?
             end
           end
         end

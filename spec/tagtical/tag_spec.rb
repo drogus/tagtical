@@ -338,7 +338,7 @@ describe Tagtical::Tag do
       end
     end
 
-    describe "#convert_type_options" do
+    describe "#convert_scope_options" do
       {:<=   => [:children, :current],
        :>=   => [:parents, :current],
        :"<>" => [:children, :parents],
@@ -348,7 +348,7 @@ describe Tagtical::Tag do
        :"<"  => [:children]
       }.each do |operator, expected|
         it "should convert #{operator.inspect} to #{expected.inspect}" do
-          subject.send(:convert_type_options, operator).should have_same_elements(expected)
+          subject.send(:convert_scope_options, operator).should have_same_elements(expected)
         end
       end
     end
