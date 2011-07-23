@@ -35,7 +35,8 @@ parsed.
     # would give you a tag of "red, blue" instead of "red" and "blue".
     tag_list.add("red, blue", :parse => false)
 
-7. Custom contexts are *not* supported since we use STI.
+7. Custom contexts are *not* supported since we use STI. That is, you must define a set of tag types
+ahead of time.
 
 Additions include:
 1. Scopes are created on Tag so you can do photo.tags.color and grab all the tags of type Tag::Color, for example.
@@ -108,10 +109,12 @@ rake spec:plugins
       end
     end
 
+    # Basic TagList Functionality
     @user = User.new(:name => "Bobby")
     @user.tag_list = "awesome, slick, hefty" # this should be familiar
-    @user.activity_list = "joking, clowning, boxing" # but you can do it for any context!
-    @user.activity_list                      # => ["joking","clowning","boxing"] as TagList
+    @user.activity_list = "joking, clowning, boxing" 
+    @user.activity_list        # => ["joking","clowning","boxing"] as TagList
+    @user.activity_list.to_s   # => "joking, clowning, boxing"
     @user.save
 
     # Cascade tag_list setters =)
@@ -122,7 +125,6 @@ rake spec:plugins
 
     @user.tags # => [<Tag value:"awesome">,<Tag value:"slick">,<Tag value:"hefty">]
     @user.activities # => [<Tag::Activity value:"joking">,<Tag::Activity value:"clowning">,<Tag::Activity value:"boxing">]
-    @user.activities.first.athletic? # => false
 
     @frankie = User.create(:name => "Frankie", :activity_list => "joking, flying, eating")
     User.activity_counts # => [<Tag::Activity value="joking" count=2>,<Tag::Activity value="clowning" count=1>...]
@@ -132,19 +134,38 @@ rake spec:plugins
                                          # from Activity to Sport and give it a relevance of 4.5.
     @user.save
 
+    # Possible Values Checking
     @user.sport_list = {"chess"}
-    @user.save! # <=== will throw an error, chess is not a sport!
+    @user.save! # <=== will throw an error, chess is not in possible_values from Tag::Sport
 
+    # Tagging Scopes
     @user.activities # => [<Tag::Activity value:"joking">,<Tag::Activity value:"clowning">,<Tag::Sport value:"boxing">]
     @user.activities(:scope => :children) # => [<Tag::Sport value:"boxing">] - look at only the STI subclasses
-    @user.tags(:scope => :children, :except => :sports) # => [<Tag::Activity value:"joking">,<Tag::Activity value:"clowning">] - filter list
-    @user.tags(:scope => :children, :only => :sports) # => [<Tag::Sport value:"boxing">] - filter list
-    @user.activities(:scope => :<) # => [<Tag::Sport value:"boxing">] - look at only the STI subclasses
-    @user.activities(:scope => :current) # => [<Tag::Activity value:"joking">,<Tag::Activity value:"clowning">] - look at only the current STI class
-    @user.activities(:scope => :==) # => [<Tag::Activity value:"joking">,<Tag::Activity value:"clowning">] - look at only the current STI class
+    @user.activities(:children)           # => shorthand for above
+    @user.tags(:scope => :children, :except => :sports) # => [<Tag::Activity value:"joking">,<Tag::Activity value:"clowning">]
+                                                        #  - filter list by excluding
+    @user.tags(:scope => :children, :only => :sports)   # => [<Tag::Sport value:"boxing">]
+                                                        #  - filter list by including
 
+    @user.activities(:scope => )         # => [<Tag::Sport value:"boxing">] - look at only the STI subclasses
+    @user.activities(:scope => :current) # => [<Tag::Activity value:"joking">,<Tag::Activity value:"clowning">] - look at only the current STI class
+    @user.activities(:scope => :==)      # => [<Tag::Activity value:"joking">,<Tag::Activity value:"clowning">] - look at only the current STI class
+
+    # Questioner Methods
     @user.activities.first.athletic? # => false
     @user.sports.all(&:ball?) # => true
+
+    # Database Access Optimizations
+    ** Sequence 1
+    @user.tags.to_a # load in the tags
+    @user.sports.to_a     # will not trigger a database hit, instead will get the sports tags off tags
+    @user.activities.to_a # same as above
+
+    ** Sequence 2
+    @user.activities.to_a # load in the tags
+    @user.sports.to_a     # will not trigger a database hit, instead will get the sports tags off activities, since it inherits from activities
+    @user.sports(:conditions => "value='Soccer'") # will actually hit the database if arguments are passed in.
+
 
 
 --- Defining Subclasses
@@ -196,8 +217,8 @@ compatibility with the will_paginate gem:
       named_scope :by_join_date, :order => "created_at DESC"
     end
 
-    User.tagged_with("awesome").by_date
-    User.tagged_with("awesome").by_date.paginate(:page => params[:page], :per_page => 20)
+    User.tagged_with("awesome").by_join_date
+    User.tagged_with("awesome").by_join_date.paginate(:page => params[:page], :per_page => 20)
 
     # Find a user with matching all tags, not just one
     User.tagged_with(["awesome", "cool"], :match_all => :true)

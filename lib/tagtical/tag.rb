@@ -232,17 +232,17 @@ module Tagtical
       #   <tt>only</tt> - An array of the following: :parents, :current, :children. Will construct conditions to query the current, parent, and/or children STI classes.
       #
       def finder_type_condition(*args)
-        scopes, options = convert_finder_type_arguments(*args)
+        sql = args[-1].is_a?(Hash) && args[-1].delete(:sql)
 
         sti_column = Tagtical::Tag.arel_table[Tagtical::Tag.inheritance_column]
-        condition = expand_tag_types(scopes, options).map { |x| x.klass.sti_name }.inject(nil) do |conds, sti_name|
+        condition = expand_tag_types(*args).map { |x| x.klass.sti_name }.inject(nil) do |conds, sti_name|
           cond = sti_column.eq(sti_name)
           conds.nil? ? cond : conds.or(cond)
         end
 
-        if condition && options[:sql]
+        if condition && sql
           condition = condition.to_sql
-          condition.insert(0, " AND ") if options[:sql]==:append
+          condition.insert(0, " AND ") if sql==:append
         end
         condition
       end
@@ -299,6 +299,38 @@ module Tagtical
           end
           count
         end
+      end
+
+      def expand_tag_types(*args)
+        scopes, options = convert_finder_type_arguments(*args)
+        classes, types = [], []
+
+        types.concat(Array(options[:types]).map { |t| taggable_class.find_tag_type!(t) }) if options[:types]
+
+        if scopes.include?(:current)
+          classes << klass
+        end
+        if scopes.include?(:children)
+          classes.concat(klass.descendants)
+        end
+        if scopes.include?(:parents) # include searches up the STI chain
+          parent_class = klass.superclass
+          while parent_class <= Tagtical::Tag
+            classes << parent_class
+            parent_class = parent_class.superclass
+          end
+        end
+
+        if options[:only]
+          classes &= find_tag_classes_for(options[:only])
+        elsif options[:except]
+          except = find_tag_classes_for(options[:except])
+          classes.reject! { |t| except.any? { |e| t <= e }}
+        end
+        tag_types_by_classes = taggable_class.tag_types.index_by(&:klass)
+        types.concat(classes.map { |k| tag_types_by_classes[k] }.uniq.compact)
+
+        types # for clarity
       end
 
       private
@@ -358,37 +390,7 @@ module Tagtical
         [scopes, options]
       end
 
-      def expand_tag_types(scopes, options)
-        classes, types = [], []
-        types.concat(Array(options[:types]).map { |t| taggable_class.find_tag_type!(t) }) if options[:types]
-
-        if scopes.include?(:current)
-          classes << klass
-        end
-        if scopes.include?(:children)
-          classes.concat(klass.descendants)
-        end
-        if scopes.include?(:parents) # include searches up the STI chain
-          parent_class = klass.superclass
-          while parent_class <= Tagtical::Tag
-            classes << parent_class
-            parent_class = parent_class.superclass
-          end
-        end
-
-        if options[:only]
-          classes &= find_tag_types(options[:only])
-        elsif options[:except]
-          except = find_tag_types(options[:except])
-          classes.reject! { |t| except.any? { |e| t <= e }}
-        end
-        tag_types_by_classes = taggable_class.tag_types.index_by(&:klass)
-        types.concat(classes.map { |k| tag_types_by_classes[k] }.uniq.compact)
-
-        types # for clarity
-      end
-
-      def find_tag_types(input)
+      def find_tag_classes_for(input)
         Array(input).map { |o| taggable_class.find_tag_type!(o).klass }
       end
 

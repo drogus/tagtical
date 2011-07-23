@@ -72,7 +72,14 @@ module Tagtical::Taggable
           alias_method_chain :tags, :finder_type_options
         else
           define_method(tag_type.has_many_name) do |*args|
-            tags.scoped.merge(tag_type.scoping(*args))
+            tags.scoped.merge(tag_type.scoping(*args)).tap do |scope|
+              if args.empty? &&
+                (loaded_parent_scope = tag_type.expand_tag_types(:parents).map { |t| send(t.has_many_name) }.detect(&:loaded?))
+
+                scope.instance_variable_set(:@loaded, true)
+                scope.instance_variable_set(:@records, loaded_parent_scope.select { |t| t.class <= tag_type.klass })
+              end
+            end
           end
         end
       end
@@ -321,15 +328,8 @@ module Tagtical::Taggable
         self.class.find_tag_type!(input)
       end
 
-      def finder_type_arguments_for_tag_list(input, *args)
-        find_tag_type!(input).send(:convert_finder_type_arguments, *args)
-      end
-
       def expand_tag_types(input, *args)
-        (@expand_tag_types ||= {})[[input, args]] ||= begin
-          scopes, options = finder_type_arguments_for_tag_list(input, *args)
-          find_tag_type!(input).send(:expand_tag_types, scopes, options)
-        end
+        (@expand_tag_types ||= {})[[input, args]] ||= find_tag_type!(input).expand_tag_types(*args)
       end
 
       # Lets say tag class A inherits from B and B has a tag with value "foo". If we tag A with value "foo",
@@ -338,26 +338,6 @@ module Tagtical::Taggable
         if tags.present? && (tag = Tagtical::Tag.send(:detect_comparable, tags, tagging.tag.value))
           tagging.update_attributes!(:tag => tag, :relevance => tag_value_lookup[tag].relevance)
           tags.delete(tag)
-        end
-      end
-
-      # Extracts the valid tag types for the cascade option.
-      def extract_tag_types_from_cascade(input, base_tag_type)
-        case input
-        when Hash
-          if except = input[:except]
-            except = extract_tag_types_from_cascade(except, base_tag_type)
-            tag_types.reject { |t| except.any? { |e| t.klass <= e.klass }} # remove children as well.
-          elsif only = input[:only]
-            extract_tag_types_from_cascade(only, base_tag_type)
-          else raise("Please provide :except or :only")
-          end
-        when true
-          tag_types
-        else
-          Array(input).map { |c| find_tag_type!(c) }
-        end.select do |tag_type|
-          tag_type.klass <= base_tag_type.klass && tag_type.klass.possible_values
         end
       end
 

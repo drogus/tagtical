@@ -53,6 +53,36 @@ describe Tagtical::Taggable do
     @taggable.should have(2).skills
   end
 
+  describe "Tag Type Scopes" do
+    before do
+      @taggable.update_attributes!(:tag_list => "tree, train", :skill_list => "basketball", :craft_list => "pottery")
+      @taggable.reload
+    end
+
+    describe "inherited tags scope optimizations" do
+      before do
+        @taggable.tags.to_a # load the target
+      end
+
+      it "should not access the database when top level tags are already loaded" do
+        ActiveRecord::Base.connection.expects(:execute).never
+        @taggable.skills.to_a
+        @taggable.crafts.to_a
+      end
+
+      it "should select the correct tags" do
+        @taggable.skills.each { |tag| tag.should be_skill }
+        @taggable.crafts.each { |tag| tag.should be_craft }
+      end
+
+      it "should access the database when args are passed in" do
+        ActiveRecord::Base.connection.expects(:execute).once.returns([])
+        @taggable.skills(:conditions => "value='Foo'").to_a
+      end
+
+    end
+  end
+
   when_possible_values_specified(:values => %w{Knitting Ruby Pottery}) do
     
     before do
@@ -67,7 +97,7 @@ describe Tagtical::Taggable do
       @taggable.craft_list.add("ruby", "pottery")
       @taggable.save!
       @taggable.reload
-      should have_only_tag_values %w{Knitting Ruby Pottery}
+      @taggable.should have_only_tag_values %w{Knitting Ruby Pottery}
     end
 
   end
