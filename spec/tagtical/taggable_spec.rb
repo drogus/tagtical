@@ -24,7 +24,7 @@ describe Tagtical::Taggable do
 
   it "should be able to create tags" do
     @taggable.skill_list = "ruby, rails, css"
-    @taggable.tag_list_cache_on(:skill)[[:children, :current]].should be_an_instance_of(Tagtical::TagList)
+    @taggable.tag_list_on(:skills).should be_an_instance_of(Tagtical::TagList)
 
     lambda { @taggable.save }.should change(Tagtical::Tag, :count).by(3)
 
@@ -90,7 +90,7 @@ describe Tagtical::Taggable do
           @taggable.tag_list.should have_same_elements %w{Ruby plain}
         end
 
-        it "should set value on skill" do
+        it "should set value on skill even if different case" do
           @taggable.skills.should have_only_tag_values %w{Ruby}
         end
 
@@ -103,10 +103,9 @@ describe Tagtical::Taggable do
         end
 
       end
-      
-      context "when :cascade => :craft" do
+      context "when :cascade only on :craft" do
         before do
-          @taggable.set_tag_list(["ruby", "plain"], :cascade => :craft)
+          @taggable.set_tag_list(["ruby", "plain"], :cascade => true, :types => :craft)
           @taggable.save!
           @taggable.reload
         end
@@ -124,6 +123,37 @@ describe Tagtical::Taggable do
         end
 
       end
+      context "Adding tags with Exclusion" do
+
+        before do
+          @taggable.set_tag_list "Ruby, plain", :cascade => true, :except => :skill
+          @taggable.save!
+          @taggable.reload
+        end
+
+        it "should not change the tags in skill" do
+          @taggable.skill_list.should have_same_elements ["basketball", "pottery"]
+        end
+
+        it "should have set the values at the tag level" do
+          @taggable.tag_list(:current).should have_same_elements ["Ruby", "plain"]
+        end
+
+      end
+      context "Getting tag_list with :except" do
+
+        before do
+          @taggable.set_tag_list "Ruby, plain", :cascade => true
+          @taggable.save!
+          @taggable.reload
+        end
+
+        it "should exclude all defined types" do
+          @taggable.tag_list(:except => :skill).should have(1).item
+        end
+
+      end
+
     end
   end
 

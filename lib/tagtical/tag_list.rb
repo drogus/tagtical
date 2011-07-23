@@ -37,7 +37,7 @@ module Tagtical
     #   tag_list = TagList.from("One , Two,  Three")
     #   tag_list # ["One", "Two", "Three"] <=== as TagValue
     def self.from(*args)
-      new(*args)
+      args[0].is_a?(self) ? args[0] : new(*args)
     end
 
     def concat(values)

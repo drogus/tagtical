@@ -105,8 +105,13 @@ module Tagtical
       super || (object.is_a?(self.class) && value == object.value)
     end
 
+    # Relevance is transferred through "taggings" join.
     def relevance
       (v = self[:relevance]) && v.to_f
+    end
+
+    def relevance=(relevance)
+      self[:relevance] = relevance
     end
 
       # Try to sort by the relevance if provided.
@@ -229,31 +234,8 @@ module Tagtical
       def finder_type_condition(*args)
         scopes, options = convert_finder_type_arguments(*args)
 
-        # If we want [:current, :children] or [:current, :children, :parents] and we don't need the finder type condition,
-        # then that means we don't need a condition at all since we are at the top-level sti class and we are essentially
-        # searching the whole range of sti classes.
-        if klass && !klass.finder_needs_type_condition?
-          scopes.delete(:parents) # we are at the topmost level.
-          scopes = [] if scopes.sort==[:current, :children].sort # no condition is required if we want the current AND the children.
-        end
-
-        sti_names = []
-        if scopes.include?(:current)
-          sti_names << klass.sti_name
-        end
-        if scopes.include?(:children) && klass
-          sti_names.concat(klass.descendants.map(&:sti_name))
-        end
-        if scopes.include?(:parents) && klass # include searches up the STI chain
-          parent_class = klass.superclass
-          while parent_class <= Tagtical::Tag
-            sti_names << parent_class.sti_name
-            parent_class = parent_class.superclass
-          end
-        end
-
         sti_column = Tagtical::Tag.arel_table[Tagtical::Tag.inheritance_column]
-        condition = sti_names.inject(nil) do |conds, sti_name|
+        condition = expand_tag_types(scopes, options).map { |x| x.klass.sti_name }.inject(nil) do |conds, sti_name|
           cond = sti_column.eq(sti_name)
           conds.nil? ? cond : conds.or(cond)
         end
@@ -372,7 +354,42 @@ module Tagtical
       def convert_finder_type_arguments(*args)
         options = args.extract_options!
         scopes = convert_scope_options(args.presence || options[:scope])
+        scopes.delete(:parents) if klass && !klass.finder_needs_type_condition?  # we are at the topmost level.
         [scopes, options]
+      end
+
+      def expand_tag_types(scopes, options)
+        classes, types = [], []
+        types.concat(Array(options[:types]).map { |t| taggable_class.find_tag_type!(t) }) if options[:types]
+
+        if scopes.include?(:current)
+          classes << klass
+        end
+        if scopes.include?(:children)
+          classes.concat(klass.descendants)
+        end
+        if scopes.include?(:parents) # include searches up the STI chain
+          parent_class = klass.superclass
+          while parent_class <= Tagtical::Tag
+            classes << parent_class
+            parent_class = parent_class.superclass
+          end
+        end
+
+        if options[:only]
+          classes &= find_tag_types(options[:only])
+        elsif options[:except]
+          except = find_tag_types(options[:except])
+          classes.reject! { |t| except.any? { |e| t <= e }}
+        end
+        tag_types_by_classes = taggable_class.tag_types.index_by(&:klass)
+        types.concat(classes.map { |k| tag_types_by_classes[k] }.uniq.compact)
+
+        types # for clarity
+      end
+
+      def find_tag_types(input)
+        Array(input).map { |o| taggable_class.find_tag_type!(o).klass }
       end
 
     end

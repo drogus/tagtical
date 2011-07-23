@@ -115,6 +115,7 @@ rake spec:plugins
     @user.save
 
     # Cascade tag_list setters =)
+    # It will look at the "possible_values" if provided, and stuff the tags down at that level.
     @user.set_activity_list(["clowning", "boxing"], :cascade => true)
     @user.save!
     @user.sport_list  # => ["boxing"]
@@ -136,6 +137,8 @@ rake spec:plugins
 
     @user.activities # => [<Tag::Activity value:"joking">,<Tag::Activity value:"clowning">,<Tag::Sport value:"boxing">]
     @user.activities(:scope => :children) # => [<Tag::Sport value:"boxing">] - look at only the STI subclasses
+    @user.tags(:scope => :children, :except => :sports) # => [<Tag::Activity value:"joking">,<Tag::Activity value:"clowning">] - filter list
+    @user.tags(:scope => :children, :only => :sports) # => [<Tag::Sport value:"boxing">] - filter list
     @user.activities(:scope => :<) # => [<Tag::Sport value:"boxing">] - look at only the STI subclasses
     @user.activities(:scope => :current) # => [<Tag::Activity value:"joking">,<Tag::Activity value:"clowning">] - look at only the current STI class
     @user.activities(:scope => :==) # => [<Tag::Activity value:"joking">,<Tag::Activity value:"clowning">] - look at only the current STI class

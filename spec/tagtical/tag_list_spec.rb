@@ -85,7 +85,7 @@ describe Tagtical::TagList do
 
   it "should be able to add a list of tags" do
     tags = [["foo", 1],["bar", 1.3],["car", 0.7]].map do |value, relevance|
-      Tagtical::Tag.new(:value => value).tap { |t| t["relevance"] = relevance }
+      Tagtical::Tag.new(:value => value, :relevance => relevance)
     end
     @tag_list.add(tags)
     tags.each do |tag|
