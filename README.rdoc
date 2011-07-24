@@ -46,7 +46,7 @@ Additions include:
 
 === Rails & Ruby Versions
 
-Tagtical was developed on Rails 3.05 and Ruby 1.9.2
+Tagtical was developed on Rails 3.0.5 and Ruby 1.9.2
 
 It can probably work with older versions, but would take a few tweaks.
 
@@ -110,6 +110,7 @@ rake spec:plugins
     end
 
     # Basic TagList Functionality
+    
     @user = User.new(:name => "Bobby")
     @user.tag_list = "awesome, slick, hefty" # this should be familiar
     @user.activity_list = "joking, clowning, boxing" 
@@ -119,6 +120,7 @@ rake spec:plugins
 
     # Cascade tag_list setters =)
     # It will look at the "possible_values" if provided, and stuff the tags down at that level.
+
     @user.set_activity_list(["clowning", "boxing"], :cascade => true)
     @user.save!
     @user.sport_list  # => ["boxing"]
@@ -135,10 +137,14 @@ rake spec:plugins
     @user.save
 
     # Possible Values Checking
-    @user.sport_list = {"chess"}
+
+    @user.sport_list = ["chess"]
     @user.save! # <=== will throw an error, chess is not in possible_values from Tag::Sport
 
     # Tagging Scopes
+
+    # Tagtical allows for tagging scopes built with the paradigm of "parents", "current", and "children".
+    # This way you can get any level of the inheritance chain and in any direction!
     @user.activities # => [<Tag::Activity value:"joking">,<Tag::Activity value:"clowning">,<Tag::Sport value:"boxing">]
     @user.activities(:scope => :children) # => [<Tag::Sport value:"boxing">] - look at only the STI subclasses
     @user.activities(:children)           # => shorthand for above
@@ -147,15 +153,17 @@ rake spec:plugins
     @user.tags(:scope => :children, :only => :sports)   # => [<Tag::Sport value:"boxing">]
                                                         #  - filter list by including
 
-    @user.activities(:scope => )         # => [<Tag::Sport value:"boxing">] - look at only the STI subclasses
+    @user.activities(:scope => :parents) # Gets tags above activities (current just top-level tags)
     @user.activities(:scope => :current) # => [<Tag::Activity value:"joking">,<Tag::Activity value:"clowning">] - look at only the current STI class
     @user.activities(:scope => :==)      # => [<Tag::Activity value:"joking">,<Tag::Activity value:"clowning">] - look at only the current STI class
 
     # Questioner Methods
+
     @user.activities.first.athletic? # => false
     @user.sports.all(&:ball?) # => true
 
     # Database Access Optimizations
+    
     ** Sequence 1
     @user.tags.to_a # load in the tags
     @user.sports.to_a     # will not trigger a database hit, instead will get the sports tags off tags

@@ -53,6 +53,36 @@ describe Tagtical::Tag do
 
   end
 
+  describe "Questioner Methods" do
+
+    before do
+      @tag = Tag::FooCraft.new(:value => "foo")
+    end
+
+    it "should have methods to question the tag type" do
+      should be_skill
+      should be_craft
+      should be_tag
+      should_not be_offering
+    end
+
+    context "before methods are defined" do
+      before do
+        @types = [:craft?, :skill?, :tag?]
+        @types.each { |x| @tag.class.send(:undef_method, x) if @tag.class.instance_methods.include?(x) }
+      end
+
+      it "should respond_to?" do
+        @types.each { |m| @tag.respond_to?(m).should be_true }
+      end
+
+      it "should respond_to correctly for incorrect methods" do
+        @tag.respond_to?(:foo).should be_false
+      end
+
+    end
+  end
+
   when_possible_values_specified do
 
     it "should use values from possible_values" do
