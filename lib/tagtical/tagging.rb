@@ -39,6 +39,7 @@ module Tagtical
 
     def set_tag_target_with_relevance(tag)
       if tag
+        tag = tag.dup
         tag.relevance = relevance
         tag[:tagger_id] = tagger_id
       end

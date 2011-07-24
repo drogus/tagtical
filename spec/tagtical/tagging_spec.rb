@@ -56,7 +56,7 @@ describe Tagtical::Tagging do
     end
 
     it "should set relevance on tag" do
-      @tag.relevance.should==4.0
+      @tagging.tag.relevance.should==4.0
     end
   end
 

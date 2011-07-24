@@ -189,7 +189,8 @@ describe Tagtical::Taggable do
 
   describe "Eager Loading Tags" do
     before do
-      @taggable.update_attributes!(:craft_list => "foo:0.9, bar, car")
+      @taggables[0].update_attributes!(:craft_list => "foo:0.9, bar, car")
+      @taggables[1].update_attributes!(:craft_list => "foo:0.3")
 
       @taggables = TaggableModel.all(:include => :tags)
     end
@@ -201,9 +202,12 @@ describe Tagtical::Taggable do
       @taggables[0].skill_list
     end
 
-    it "should populate relevance on tags" do
-      @taggables[0].craft_list.find("foo").relevance==0.9
+    it "should populate relevance on tags and preserve different relevances" do
+      ActiveRecord::Base.connection.expects(:execute).never
+      @taggables[0].tags.detect { |t| t.value=="foo" }.relevance.should==0.9
+      @taggables[1].tags.detect { |t| t.value=="foo" }.relevance.should==0.3
     end
+    
   end
 
   describe "tag_list scoping behavior" do
