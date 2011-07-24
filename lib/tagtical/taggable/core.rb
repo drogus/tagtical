@@ -15,7 +15,7 @@ module Tagtical::Taggable
       def initialize_tagtical_core
         has_many :taggings, :as => :taggable, :dependent => :destroy, :include => :tag, :class_name => "Tagtical::Tagging"
         has_many :tags, :through => :taggings, :source => :tag, :class_name => "Tagtical::Tag",
-                 :select => "#{Tagtical::Tag.table_name}.*, #{Tagtical::Tagging.table_name}.relevance" # include the relevance on the tags
+                 :select => "#{Tagtical::Tag.table_name}.*, #{Tagtical::Tagging.table_name}.relevance, #{Tagtical::Tagging.table_name}.tagger_id" # include the relevance on the tags
 
         tag_types.each do |tag_type| # has_many :tags gets created here
 
@@ -67,18 +67,21 @@ module Tagtical::Taggable
           define_method("tags_with_finder_type_options") do |*args|
             bool = args.shift if [true, false].include?(args.first)
             tags = tags_without_finder_type_options(bool)
-            args.empty? ? tags : tags.scoped.merge(tag_type.scoping(*args))
+            args.empty? ? tags : tags_with_type_scoping(tag_type, *args)
           end
           alias_method_chain :tags, :finder_type_options
-        else
-          define_method(tag_type.has_many_name) do |*args|
-            tags.scoped.merge(tag_type.scoping(*args)).tap do |scope|
-              if args.empty? &&
-                (loaded_parent_scope = tag_type.expand_tag_types(:parents).map { |t| send(t.has_many_name) }.detect(&:loaded?))
-
-                scope.instance_variable_set(:@loaded, true)
-                scope.instance_variable_set(:@records, loaded_parent_scope.select { |t| t.class <= tag_type.klass })
-              end
+        else # handle the Tagtical::Tag subclasses
+          define_method(tag_type.scope_name) do |*args|
+            if args.empty?
+              instance_variable_get(tag_type.scope_ivar) || instance_variable_set(tag_type.scope_ivar,
+                tags.scoped.merge(tag_type.scoping).tap do |scope|
+                  if (loaded_parent_scope = tag_type.expand_tag_types(:parents).map { |t| tag_scope(t) }.detect(&:loaded?))
+                    scope.instance_variable_set(:@loaded, true)
+                    scope.instance_variable_set(:@records, loaded_parent_scope.select { |t| t.class <= tag_type.klass })
+                  end
+                end)
+            else
+              tags_with_type_scoping(tag_type, *args)
             end
           end
         end
@@ -249,16 +252,17 @@ module Tagtical::Taggable
       ##
       # Returns all tags that aren't owned.
       def tags_on(context, *args)
-        tag_scope(context, *args).where("#{Tagtical::Tagging.table_name}.tagger_id IS NULL").all
+        scope = tag_scope(context, *args)
+        if args.empty?
+          scope.reject(&:has_tagger?)
+        else
+          scope.where("#{Tagtical::Tagging.table_name}.tagger_id IS NULL").all
+        end
       end
 
-      def reload(*args)
-        tag_types.each do |tag_type|
-          instance_variable_set(tag_type.tag_list_ivar, nil)
-          instance_variable_set(tag_type.tag_list_ivar(:all), nil)
-        end
-
-        super(*args)
+      def reload(*)
+        remove_tag_caches_on(tag_types)
+        super
       end
 
       def save_tags
@@ -279,7 +283,7 @@ module Tagtical::Taggable
             current_tags = tags_on(tag_type, :types => expanded_tag_types, :scope => :parents) # add in the parents because we need them later on down.
             old_tags     = current_tags - tags
             new_tags     = tags         - current_tags
-            
+
             unowned_taggings = taggings.where(:tagger_id => nil)
 
             # If relevances are specified on current tags, make sure to update those
@@ -303,7 +307,7 @@ module Tagtical::Taggable
               taggings.create!(:tag_id => tag.id, :taggable => self, :relevance => tag_value_lookup[tag].relevance) # Create new taggings:
             end
           end
-          
+
           # Force tag lists to reload to integrate any new tags from inheritance.
           remove_tag_caches_on(tag_type)
         end
@@ -313,15 +317,17 @@ module Tagtical::Taggable
 
       private
 
-      def remove_tag_caches_on(tag_type)
-        [nil, :all].each do |prefix|
-          ivar = tag_type.tag_list_ivar(prefix)
-          remove_instance_variable(ivar) if instance_variable_defined?(ivar)
+      def remove_tag_caches_on(tag_types)
+        Array(tag_types).each do |tag_type|
+          [:all_tag_list_ivar, :tag_list_ivar, :scope_ivar].each do |ivar_method|
+            ivar = tag_type.send(ivar_method)
+            remove_instance_variable(ivar) if instance_variable_defined?(ivar)
+          end
         end
       end
 
       def tag_scope(input, *args)
-        tags.where(find_tag_type!(input).finder_type_condition(*args))
+        send(find_tag_type!(input).scope_name, *args)
       end
 
       def find_tag_type!(input)
@@ -332,6 +338,11 @@ module Tagtical::Taggable
         (@expand_tag_types ||= {})[[input, args]] ||= find_tag_type!(input).expand_tag_types(*args)
       end
 
+
+      def tags_with_type_scoping(tag_type, *args)
+        tags.scoped.merge(tag_type.scoping(*args))
+      end
+      
       # Lets say tag class A inherits from B and B has a tag with value "foo". If we tag A with value "foo",
       # we want B to have only one instance of "foo" and that tag should be an instance of A (a subclass of B).
       def update_tagging_with_inherited_tag!(tagging, tags, tag_value_lookup)

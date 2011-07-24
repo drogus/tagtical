@@ -57,7 +57,8 @@ module Tagtical::Taggable
 
       def reload(*args)
         tag_types.each do |tag_type|
-          instance_variable_set(tag_type.tag_list_ivar(:owned), nil)
+          ivar = tag_type.tag_list_ivar(:owned)
+          remove_instance_variable(ivar) if instance_variable_defined?(ivar)
         end
 
         super(*args)

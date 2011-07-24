@@ -141,6 +141,11 @@ module Tagtical
       !!tag_types_for_questioner_method(method_id) || super
     end
 
+    # Carried over from tagging.
+    def has_tagger?
+      !self[:tagger_id].nil?
+    end
+
     private
 
     def tag_types_for_questioner_method(method_name)
@@ -295,6 +300,14 @@ module Tagtical
 
       def tag_list_ivar(*args)
         "@#{tag_list_name(*args)}"
+      end
+
+      def all_tag_list_ivar
+        tag_list_ivar(:all)
+      end
+
+      def scope_ivar
+        "@#{scope_name}"
       end
 
       # Returns the level from which it extends from Tagtical::Tag

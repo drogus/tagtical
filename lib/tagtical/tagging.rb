@@ -22,12 +22,11 @@ module Tagtical
        belongs_to :tagger, :polymorphic => true
     else
       belongs_to :tagger, case Tagtical.config.tagger
-       when Hash then Tagtical.config.tagger
-       when true then {:class_name => "User"} # default to using User class.
-       when String then {:class_name => Tagtical.config.tagger}
-                           end
+      when Hash then Tagtical.config.tagger
+      when true then {:class_name => "User"} # default to using User class.
+      when String then {:class_name => Tagtical.config.tagger}
+      end
     end
-
 
     before_create { |record| record.relevance ||= default_relevance }
 
@@ -37,6 +36,15 @@ module Tagtical
     def <=>(tagging)
       relevance <=> tagging.relevance
     end
+
+    def set_tag_target_with_relevance(tag)
+      if tag
+        tag.relevance = relevance
+        tag[:tagger_id] = tagger_id
+      end
+      set_tag_target_without_relevance(tag)
+    end
+    alias_method_chain :set_tag_target, :relevance
 
   end
 end

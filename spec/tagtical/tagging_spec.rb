@@ -4,7 +4,7 @@ describe Tagtical::Tagging do
   before(:each) do
     clean_database!
     @klass = Tagtical::Tagging
-    @tagging = @klass.new
+    @tagging = @klass.new(:relevance => 4.0)
   end
   subject { @tagging }
 
@@ -48,5 +48,16 @@ describe Tagtical::Tagging do
       2.times { @klass.create(:taggable => @taggable, :tag => @tag, :context => 'tags') }
     }.should change(@klass, :count).by(1)
   end
-  
+
+  describe "#set_tag_target" do
+    before do
+      @tag = Tagtical::Tag.new(:value => "foo")
+      @tagging.set_tag_target(@tag)
+    end
+
+    it "should set relevance on tag" do
+      @tag.relevance.should==4.0
+    end
+  end
+
 end
