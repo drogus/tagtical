@@ -72,14 +72,13 @@ module Tagtical::Taggable
           alias_method_chain :tags, :finder_type_options
         else # handle the Tagtical::Tag subclasses
           define_method(tag_type.scope_name) do |*args|
-            if args.empty?
-              instance_variable_get(tag_type.scope_ivar) || instance_variable_set(tag_type.scope_ivar,
-                tags.scoped.merge(tag_type.scoping).tap do |scope|
-                  if (loaded_parent_scope = tag_type.expand_tag_types(:parents).map { |t| tag_scope(t) }.detect(&:loaded?))
-                    scope.instance_variable_set(:@loaded, true)
-                    scope.instance_variable_set(:@records, loaded_parent_scope.select { |t| t.class <= tag_type.klass })
-                  end
-                end)
+            if tags.loaded?
+              cache = instance_variable_get(tag_type.scope_ivar) || instance_variable_set(tag_type.scope_ivar, {})
+              tag_type_classes = expand_tag_types(tag_type, *args).map(&:klass)
+              cache[tag_type_classes] ||= tags_with_type_scoping(tag_type, *args).tap do |scope|
+                scope.instance_variable_set(:@loaded, true)
+                scope.instance_variable_set(:@records, tags.select { |t| tag_type_classes.include?(t.class) })
+              end
             else
               tags_with_type_scoping(tag_type, *args)
             end

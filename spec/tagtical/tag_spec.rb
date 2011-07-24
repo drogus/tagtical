@@ -385,11 +385,10 @@ describe Tagtical::Tag do
 
     describe "#derive_class_candidates" do
       specify do
-        subject.send(:derive_class_candidates).should == [
-          "Tagtical::Tag::TaggableModel::Skill", "Tagtical::Tag::TaggableModel::SkillTag",
-          "Tagtical::Tag::Skill", "Tagtical::Tag::SkillTag", "Tag::TaggableModel::SkillTag", "Tag::TaggableModel::Skill", "TaggableModel::SkillTag",
-          "Tag::SkillTag", "TaggableModel::Skill", "Tag::Skill",
-          "SkillTag", "Skill"]
+        subject.send(:derive_class_candidates).should == ["Tagtical::Tag::TaggableModel::SkillTag", "Tagtical::Tag::TaggableModel::Skill", "Tagtical::Tag::TaggableModelSkillTag",
+          "Tagtical::Tag::TaggableModelSkill", "Tag::TaggableModel::SkillTag", "Tag::TaggableModel::Skill", "Tagtical::Tag::SkillTag",
+          "Tagtical::Tag::Skill", "Tag::TaggableModelSkillTag", "Tag::TaggableModelSkill", "TaggableModel::SkillTag",
+          "TaggableModel::Skill", "Tag::SkillTag", "Tag::Skill", "TaggableModelSkillTag", "TaggableModelSkill", "SkillTag", "Skill"]
       end
     end
 

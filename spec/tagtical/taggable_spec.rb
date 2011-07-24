@@ -67,17 +67,16 @@ describe Tagtical::Taggable do
       it "should not access the database when top level tags are already loaded" do
         ActiveRecord::Base.connection.expects(:execute).never
         @taggable.skills.to_a
-        @taggable.crafts.to_a
+        @taggable.skills.should have_only_tag_values %w{basketball pottery}
+        @taggable.crafts(:current).should have_only_tag_values %w{pottery}
+        @taggable.skills(:current).should have_only_tag_values %w{basketball}
+        @taggable.skills(:children).should have_only_tag_values %w{pottery}
+        @taggable.tags.should have_only_tag_values %w{train tree basketball pottery}
       end
 
       it "should select the correct tags" do
         @taggable.skills.each { |tag| tag.should be_skill }
         @taggable.crafts.each { |tag| tag.should be_craft }
-      end
-
-      it "should access the database when args are passed in" do
-        ActiveRecord::Base.connection.expects(:execute).once.returns([])
-        @taggable.skills(:conditions => "value='Foo'").to_a
       end
 
     end

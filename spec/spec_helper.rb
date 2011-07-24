@@ -25,7 +25,7 @@ end
 
 RSpec::Matchers.define :have_only_tag_values do |expected|
   match do |actual|
-    actual = actual.tags if actual.respond_to?(:tags)
+    actual = actual.tags if actual.class.respond_to?(:taggable?) && actual.class.taggable?
     actual.map(&:value).should have_same_elements(expected)
   end
 end
