@@ -362,7 +362,7 @@ module Tagtical
           suffixes = [classify]
           klass = taggable_class
           while klass < ActiveRecord::Base
-            suffixes << "#{klass}::#{classify}"
+            suffixes.concat ["#{klass}#{classify}", "#{klass}::#{classify}"]
             klass = klass.superclass
           end
           suffixes.map { |s| [s, "#{s}Tag"] }.flatten.each do |name| # support Interest and InterestTag class names.
