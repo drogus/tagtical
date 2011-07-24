@@ -370,7 +370,7 @@ module Tagtical
               longest_candidate << "::#{name}" unless name=="Tag"
             end.scan(/^|::/) { arr << $' } # Klass, Tag::Klass, Tagtical::Tag::Klass
           end
-        end.uniq.sort_by { |candidate| -candidate.split("::").size } # more nested classnames first
+        end.uniq.sort_by { |candidate| [candidate.split("::").size, candidate.length] }.reverse # more nested classnames first
       end
 
       # Take operator types (ie <, >, =) and convert them into :children, :current, or :parents.
