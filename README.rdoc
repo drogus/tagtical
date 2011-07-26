@@ -57,6 +57,10 @@ traditional plugin you can install like so:
 
   script/plugin install git://github.com/Mixbook/tagtical.git
 
+==== Gem
+
+  gem install tagtical
+
 ==== Post Installation
 
 1. script/generate tagtical_migration
@@ -75,7 +79,7 @@ To use it, add it to your Gemfile:
 == Testing
 
 Tagtical uses RSpec for its test coverage. Inside the plugin
-directory, you can run the specs for RoR 3.0.0 with:
+directory, you can run the specs for RoR 3.0.5 with:
 
   rake spec
 
