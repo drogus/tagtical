@@ -248,15 +248,17 @@ module Tagtical
         sql = args[-1].is_a?(Hash) && args[-1].delete(:sql)
 
         sti_column = Tagtical::Tag.arel_table[Tagtical::Tag.inheritance_column]
-        condition = expand_tag_types(*args).map { |x| x.klass.sti_name }.inject(nil) do |conds, sti_name|
-          cond = sti_column.eq(sti_name)
-          conds.nil? ? cond : conds.or(cond)
-        end
+        sti_names = expand_tag_types(*args).map { |x| x.klass.sti_name }
 
+        condition = sti_column.eq(sti_names.delete(nil)) if sti_names.include?(nil)
+        sti_names_condition = sti_column.in(sti_names)
+        condition = condition ? condition.or(sti_names_condition) : sti_names_condition
+        
         if condition && sql
           condition = condition.to_sql
           condition.insert(0, " AND ") if sql==:append
         end
+        
         condition
       end
 
