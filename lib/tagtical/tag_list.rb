@@ -152,6 +152,8 @@ module Tagtical
         input.map { |value| extract(value) }
       when Symbol # put at the end, rare case
         extract(input.to_s)
+      when nil
+        []
       else
         raise("Cannot parse: #{input.inspect}")
       end

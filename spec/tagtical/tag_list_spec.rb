@@ -20,8 +20,13 @@ describe Tagtical::TagList do
   describe ".from" do
 
     it "should accept a hash with relevance values" do
-      @tag_list = Tagtical::TagList.from("tag 1" => 4.5, "tag 2" => 4.454)
+      @tag_list = @klass.from("tag 1" => 4.5, "tag 2" => 4.454)
       @tag_list.map(&:relevance).should == [4.5, 4.454]
+    end
+
+    it "should accept nil" do
+      @tag_list = @klass.from(nil)
+      @tag_list.empty?.should be_true
     end
     
   end
