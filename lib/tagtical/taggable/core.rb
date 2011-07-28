@@ -27,6 +27,8 @@ module Tagtical::Taggable
           Tagtical::Tag.define_scope_for_type(tag_type)
 
           define_tag_scope(tag_type)
+          
+          define_has_tag_scope(tag_type)
 
           class_eval <<-RUBY, __FILE__, __LINE__ + 1
             def self.with_#{tag_type.pluralize}(*tags)
@@ -54,6 +56,21 @@ module Tagtical::Taggable
       def acts_as_taggable(*args)
         super(*args)
         initialize_tagtical_core
+      end
+
+      # Defines has and has_no scopes at the class level.
+      def define_has_tag_scope(tag_type)
+        tag_table, tagging_table = Tagtical::Tag.table_name, Tagtical::Tagging.table_name
+
+        scope "has_no_#{tag_type.has_many_name}", lambda { |*args|
+          args << args.extract_options!.update(:sql => :append)
+
+          select("*").
+            joins("LEFT JOIN #{tagging_table} ON #{table_name}.`id` = #{tagging_table}.`taggable_id` AND #{tagging_table}.`taggable_type` = '#{sti_name}'").
+            joins(%{LEFT JOIN #{tag_table} ON #{tag_table}.`id` = #{tagging_table}.`tag_id` #{tag_type.finder_type_condition(*args)}}).
+            where("#{tag_table}.id IS NULL").
+            group("#{table_name}.id")
+          }
       end
 
         # If the tag_type is base? (type=="tag"), then we add additional functionality to the AR

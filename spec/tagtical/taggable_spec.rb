@@ -82,6 +82,20 @@ describe Tagtical::Taggable do
     end
   end
 
+  describe "Has and Has Not Scopes" do
+    before do
+      @taggables[0].update_attributes!(:language_list => "Spanish, French", :craft_list => "Pottery", :skill_list => "Fighting")
+      @taggables[1].update_attributes!(:language_list => "Spanish, French", :craft_list => "Pottery", :need_list => "Food")
+    end
+
+    # These *should* be working, but we are having trouble in sqlite3, perhaps in mysql it will preform better.
+    #it "should omit the classes we don't want" do
+    #  TaggableModel.has_no_needs.all.should==[@taggables[0]]
+    #  TaggableModel.has_no_tags(:needs, :<).all.should==[]
+    #end
+
+  end
+
   when_possible_values_specified(:values => %w{Knitting Ruby Pottery}) do
     
     before do
