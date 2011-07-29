@@ -64,10 +64,9 @@ module Tagtical::Taggable
 
         scope "has_no_#{tag_type.has_many_name}", lambda { |*args|
           args << args.extract_options!.update(:sql => :append)
-
-          select("*").
-            joins("LEFT JOIN #{tagging_table} ON #{table_name}.`id` = #{tagging_table}.`taggable_id` AND #{tagging_table}.`taggable_type` = '#{sti_name}'").
-            joins(%{LEFT JOIN #{tag_table} ON #{tag_table}.`id` = #{tagging_table}.`tag_id` #{tag_type.finder_type_condition(*args)}}).
+          select("#{table_name}.*").
+            joins("LEFT OUTER JOIN #{tagging_table} ON ( #{tagging_table}.taggable_id = #{table_name}.id )").
+            joins(%{LEFT OUTER JOIN #{tag_table} ON ( #{tag_table}.id = #{tagging_table}.tag_id #{tag_type.finder_type_condition(*args)} )}).
             where("#{tag_table}.id IS NULL").
             group("#{table_name}.id")
           }
