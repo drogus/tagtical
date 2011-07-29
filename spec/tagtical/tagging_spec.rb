@@ -12,12 +12,12 @@ describe Tagtical::Tagging do
     context "when no relevance set" do
       before do
         @tagging.relevance = nil
-        @tagging.run_callbacks(:create)
+        @tagging.run_callbacks(:validation)
       end
       its(:relevance) { should == @klass.default_relevance }
     end
     context "when relevance set" do
-      before { @tagging.run_callbacks(:create) }
+      before { @tagging.run_callbacks(:validation) }
       its(:relevance) { should == @tagging.relevance }
     end
   end
@@ -57,6 +57,19 @@ describe Tagtical::Tagging do
 
     it "should set relevance on tag" do
       @tagging.tag.relevance.should==4.0
+    end
+  end
+
+  describe "relevance_range" do
+    before do
+      @taggable = TaggableModel.create(:name => "Bob Jones")
+      Tagtical::Tag.relevance_range = (0..10)
+    end
+
+    it "should throw an error if the relevance is out of range" do
+      @taggable.set_tag_list "car:11"
+
+      expect { @taggable.save }.to raise_error
     end
   end
 

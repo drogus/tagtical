@@ -319,7 +319,7 @@ module Tagtical::Taggable
             end
 
             new_tags.each do |tag|
-              taggings.create!(:tag_id => tag.id, :taggable => self, :relevance => tag_value_lookup[tag].relevance) # Create new taggings:
+              taggings.create!(:tag => tag, :taggable => self, :relevance => tag_value_lookup[tag].relevance) # Create new taggings:
             end
           end
 
