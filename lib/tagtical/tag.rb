@@ -18,6 +18,8 @@ module Tagtical
     before_validation :ensure_possible_values
     validate :validate_possible_values
 
+    class_attribute :relevance_range
+
     ### CLASS METHODS:
 
     class << self
