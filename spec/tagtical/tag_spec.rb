@@ -384,13 +384,29 @@ describe Tagtical::Tag do
     end
 
     describe "#derive_class_candidates" do
-      specify do
-        subject.send(:derive_class_candidates).should == ["Tagtical::Tag::TaggableModel::SkillTag",
-          "Tagtical::Tag::TaggableModel::Skill", "Tag::TaggableModel::SkillTag", "Tagtical::Tag::TaggableModelSkillTag",
-          "Tag::TaggableModel::Skill", "Tagtical::Tag::TaggableModelSkill", "TaggableModel::Skill", "TaggableModel::SkillTag",
-          "Tag::TaggableModelSkill", "Tag::TaggableModelSkillTag", "SkillTag", "TaggableModelSkill", "Skill",
-          "TaggableModelSkillTag", "Tagtical::Tag::SkillTag", "Tagtical::Tag::Skill", "Tag::SkillTag", "Tag::Skill"]
+      before(:all) do
+        # use an inheriting tag model so we can test the building up the sti chain.
+        @candidates = Tagtical::Tag::Type.new("skill", InheritingTaggableModel).send(:derive_class_candidates)
       end
+      subject { @candidates }
+      
+      it do
+        should == ["Tagtical::Tag::InheritingTaggableModel::Skill", "Tagtical::Tag::InheritingTaggableModel::SkillTag",
+          "Tagtical::Tag::TaggableModel::SkillTag", "Tagtical::Tag::TaggableModel::Skill", "Tagtical::Tag::SkillTag",
+          "Tagtical::Tag::Skill", "Tagtical::Tag::InheritingTaggableModelSkill", "Tag::InheritingTaggableModel::Skill",
+          "Tagtical::Tag::InheritingTaggableModelSkillTag", "Tag::InheritingTaggableModel::SkillTag",
+          "Tagtical::Tag::TaggableModelSkill", "Tag::TaggableModel::Skill", "Tagtical::Tag::TaggableModelSkillTag",
+          "Tag::TaggableModel::SkillTag", "Tag::SkillTag", "Tag::Skill", "Tag::InheritingTaggableModelSkillTag",
+          "InheritingTaggableModel::Skill", "InheritingTaggableModel::SkillTag", "Tag::InheritingTaggableModelSkill",
+          "TaggableModel::Skill", "Tag::TaggableModelSkill", "TaggableModel::SkillTag", "Tag::TaggableModelSkillTag",
+          "SkillTag", "Skill", "InheritingTaggableModelSkill", "InheritingTaggableModelSkillTag", "TaggableModelSkill", "TaggableModelSkillTag"]
+      end
+
+      it "should be favor deeper sti levels" do
+        nesting_counts = @candidates.map { |x| x.split("::").size }
+        nesting_counts.sort_by { |c| -c }.should == nesting_counts
+      end
+
     end
 
     describe "#tag_list_name" do
