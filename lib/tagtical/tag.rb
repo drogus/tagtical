@@ -363,18 +363,24 @@ module Tagtical
       # Returns an array of potential class names for this specific type.
       def derive_class_candidates
         [].tap do |arr|
-          suffixes = [classify]
           klass = taggable_class
-          while klass < ActiveRecord::Base
-            suffixes.concat ["#{klass}#{classify}", "#{klass}::#{classify}"]
-            klass = klass.superclass
+          suffixes = [[classify, 0]]
+          0.tap do |counter|
+            while klass < ActiveRecord::Base
+              suffixes.concat [["#{klass}#{classify}", "#{klass}::#{classify}", counter += 1]]
+              klass = klass.superclass
+            end
           end
-          suffixes.map { |s| [s, "#{s}Tag"] }.flatten.each do |name| # support Interest and InterestTag class names.
-            "Tagtical::Tag".tap do |longest_candidate|
-              longest_candidate << "::#{name}" unless name=="Tag"
-            end.scan(/^|::/) { arr << $' } # Klass, Tag::Klass, Tagtical::Tag::Klass
+          #suffixes.map { |s| s[0..-2].map { |t| [t, "#{t}Tag"] }.flatten << s.last }
+          suffixes.map { |s| s[0..-2].map { |t| [t, "#{t}Tag"] }.flatten << s.last }.each do |names| # support Interest and InterestTag class names.
+            names[0..-2].map do |name|
+              "Tagtical::Tag".tap do |longest_candidate|
+                longest_candidate << "::#{name}" unless name=="Tag"
+              end.scan(/^|::/) { arr << [$', names.last] } # Klass, Tag::Klass, Tagtical::Tag::Klass
+            end
           end
-        end.uniq.sort_by { |candidate| [candidate.split("::").size, candidate.length] }.reverse # more nested classnames first
+        end.sort_by { |candidate, sti_level| [sti_level, candidate.split("::").size] }.
+          reverse.map(&:first).uniq # more nested classnames first
       end
 
       # Take operator types (ie <, >, =) and convert them into :children, :current, or :parents.
