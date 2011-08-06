@@ -58,6 +58,7 @@ module Tagtical::Taggable
         initialize_tagtical_core
       end
 
+      # Ensure that the tag classes are loaded.
       def eager_load_tag_classes
         tag_types.each(&:klass)
       end
