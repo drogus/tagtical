@@ -99,6 +99,21 @@ module Tagtical
         end
       end
 
+      def tag_types_for_questioner_method(method_name)
+        method_name[-1]=="?" && Type.cache[method_name[0..-2]]
+      end
+
+      def method_missing(method_name, *args, &block)
+        if types = tag_types_for_questioner_method(method_name)
+          self.class.send(:define_method, method_name) do
+            types.any? { |type| self <= type.klass }
+          end
+          send(method_name)
+        else
+          super
+        end
+      end
+
     end
 
     ### INSTANCE METHODS:
@@ -140,7 +155,7 @@ module Tagtical
     end
 
     def respond_to?(method_id, include_private = false)
-      !!tag_types_for_questioner_method(method_id) || super
+      !!self.class.send(:tag_types_for_questioner_method, method_id) || super
     end
 
     # Carried over from tagging.
@@ -150,14 +165,11 @@ module Tagtical
 
     private
 
-    def tag_types_for_questioner_method(method_name)
-      method_name[-1]=="?" && Type.cache[method_name[0..-2]]
-    end
-
     def method_missing(method_name, *args, &block)
-      if types = tag_types_for_questioner_method(method_name)
+      if self.class.send(:tag_types_for_questioner_method, method_name)
+        self.class.send(:method_missing, method_name, *args, &block)
         self.class.send(:define_method, method_name) do
-          types.any? { |type| is_a?(type.klass) }
+          self.class.send(method_name)
         end
         send(method_name)
       else

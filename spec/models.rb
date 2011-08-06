@@ -1,5 +1,4 @@
 ### START Tag Subclasses ###
-puts "loadinfg"
 module Tagtical
   class Tag
     class Language < Tagtical::Tag

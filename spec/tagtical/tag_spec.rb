@@ -66,6 +66,13 @@ describe Tagtical::Tag do
       should_not be_offering
     end
 
+    it "should have methods on the class to question the tag type" do
+      @tag.class.should be_skill
+      @tag.class.should be_craft
+      @tag.class.should be_tag
+      @tag.class.should_not be_offering
+    end
+
     context "before methods are defined" do
       before do
         @types = [:craft?, :skill?, :tag?]
