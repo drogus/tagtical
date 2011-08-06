@@ -123,19 +123,31 @@ describe Tagtical::TagList do
       @taggable.save
       @taggable.reload
     end
-    
-    it "should contain relevance with the relevance delimiter" do
-      @tag_list.to_s.should include("awesome:4.0, radical:3.0")
-    end
 
     it "should keep quotations in words when parse is false" do
-      @tag_list.to_s.should include(%{"car, bar":10.3})
+      @tag_list.to_s.should include(%{"car, bar"})
     end
 
-    it "should include relevance in string" do
-      @taggable.tag_list.to_s.should == "retro:6.0, car:4.0, nature:1.0, test:2.7"
+    it "should not include relevance in string" do
+      @taggable.tag_list.to_s.should == "retro, car, nature, test"
     end
 
+    context "when :relevance is specified" do
+
+      it "should contain relevance with the relevance delimiter" do
+        @tag_list.to_s(:relevance).should include("awesome:4.0, radical:3.0")
+      end
+
+      it "should keep quotations in words when parse is false" do
+        @tag_list.to_s(:relevance).should include(%{"car, bar":10.3})
+      end
+
+      it "should include relevance in string" do
+        @taggable.tag_list.to_s(:relevance).should == "retro:6.0, car:4.0, nature:1.0, test:2.7"
+      end
+
+    end
+  
   end
 
   it "should quote escape tags with commas in them" do

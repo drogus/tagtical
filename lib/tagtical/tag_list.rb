@@ -88,15 +88,15 @@ module Tagtical
     # The tags are joined with <tt>TagList.delimiter</tt> and quoted if necessary.
     #
     # Example:
-    #   tag_list = TagList.new("Round", "Square,Cube")
-    #   tag_list.to_s # 'Round, "Square,Cube"'
-    def to_s
+    #   tag_list = TagList.new("Round: 1.3", "Square,Cube")
+    #   tag_list.to_s             # 'Round, "Square,Cube"'
+    #   tag_list.to_s(:relevance) # 'Round:1.3, "Square,Cube"'
+    def to_s(mode=nil)
       tag_list = frozen? ? self.dup : self
       tag_list.send(:clean!)
-
       tag_list.map do |tag_value|
         value = tag_value.include?(delimiter) ? %{"#{tag_value}"} : tag_value
-        [value, tag_value.relevance].compact.join(TagValue.relevance_delimiter)
+        [value, (tag_value.relevance if mode==:relevance)].compact.join(TagValue.relevance_delimiter)
       end.join(delimiter.gsub(/(\S)$/, '\1 '))
     end
 
