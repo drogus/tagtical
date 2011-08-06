@@ -5,11 +5,11 @@
 
 Gem::Specification.new do |s|
   s.name = %q{tagtical}
-  s.version = "1.5.0"
+  s.version = "1.5.1"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Aryk Grosz"]
-  s.date = %q{2011-08-05}
+  s.date = %q{2011-08-06}
   s.description = %q{Tagtical allows you do create subclasses for Tag and add additional functionality in an STI fashion. For example. You could do Tag::Color.find_by_name('blue').to_rgb. It also supports storing weights or relevance on the taggings.}
   s.email = %q{aryk@mixbook.com}
   s.extra_rdoc_files = [
