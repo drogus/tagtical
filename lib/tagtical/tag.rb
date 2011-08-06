@@ -336,6 +336,7 @@ module Tagtical
           classes << klass
         end
         if scopes.include?(:children)
+          taggable_class.eager_load_tag_classes if klass.descendants.empty?
           classes.concat(klass.descendants)
         end
         if scopes.include?(:parents) # include searches up the STI chain

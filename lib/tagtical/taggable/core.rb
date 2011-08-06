@@ -58,6 +58,10 @@ module Tagtical::Taggable
         initialize_tagtical_core
       end
 
+      def eager_load_tag_classes
+        tag_types.each(&:klass)
+      end
+
       # Defines has and has_no scopes at the class level.
       def define_has_tag_scope(tag_type)
         tag_table, tagging_table = Tagtical::Tag.table_name, Tagtical::Tagging.table_name
@@ -352,7 +356,6 @@ module Tagtical::Taggable
       def expand_tag_types(input, *args)
         (@expand_tag_types ||= {})[[input, args]] ||= find_tag_type!(input).expand_tag_types(*args)
       end
-
 
       def tags_with_type_scoping(tag_type, *args)
         tags.scoped.merge(tag_type.scoping(*args))
