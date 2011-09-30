@@ -187,7 +187,7 @@ module Tagtical
 
     def validate_possible_values
       if possible_values && !possible_values.include?(value)
-        errors.add(:value, %{Value "#{value}" not found in list: #{possible_values.inspect}})
+        errors.add(:value, %{"#{value}" not found in list: #{possible_values.inspect}})
       end
     end
 

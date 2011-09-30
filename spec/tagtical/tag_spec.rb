@@ -41,7 +41,7 @@ describe Tagtical::Tag do
       it "should not be valid if value is not in possible_values" do
         @tag.value = "glass"
         @tag.should be_invalid
-        @tag.errors[:value][0].should == %{Value "glass" not found in list: ["knife", "fork", "spoon"]}
+        @tag.errors[:value][0].should == %{"glass" not found in list: ["knife", "fork", "spoon"]}
       end
 
       it "should be valid even if cases are different" do
