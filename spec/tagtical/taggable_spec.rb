@@ -113,10 +113,15 @@ describe Tagtical::Taggable do
       @taggable.should have_only_tag_values %w{Knitting Ruby Pottery}
     end
 
+    it "should raise an error when saved with value not in possible_values" do
+      @taggable.craft_list << "not-in-list"
+      lambda { @taggable.save! }.should raise_error(ActiveRecord::RecordInvalid)
+    end
+
   end
 
   describe "#cascade_set_tag_list!" do
-    when_possible_values_specified(:values => %w{Knitting Ruby Pottery}, :klass => Tag::Skill) do
+    when_possible_values_specified(:values => %w{Knitting Ruby Pottery Basketball}, :klass => Tag::Skill) do
       before do
         @taggable.update_attributes!(:tag_list => "tree, train", :skill_list => "basketball", :craft_list => "pottery")
         @taggable.reload
@@ -175,7 +180,7 @@ describe Tagtical::Taggable do
         end
 
         it "should not change the tags in skill" do
-          @taggable.skill_list.should have_same_elements ["basketball", "pottery"]
+          @taggable.skill_list.should have_same_elements ["Basketball", "Pottery"]
         end
 
         it "should have set the values at the tag level" do

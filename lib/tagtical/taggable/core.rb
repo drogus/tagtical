@@ -296,7 +296,7 @@ module Tagtical::Taggable
             tag_list = tag_list.uniq
 
             # Find existing tags or create non-existing tags:
-            tag_value_lookup = tag_type.scoping { find_or_create_tags(tag_list) }
+            tag_value_lookup = tag_type.klass.find_or_create_tags(tag_list)
             tags = tag_value_lookup.keys
 
 
