@@ -16,7 +16,7 @@ describe Tagtical do
   describe "Taggable Method Generation" do
     before(:each) do
       clean_database!
-      JunkTaggableModel.write_inheritable_attribute(:tag_types, [])
+      JunkTaggableModel.tag_types = []
       JunkTaggableModel.acts_as_taggable(:tags, :languages, :skills, :needs, :offerings)
       @taggable = JunkTaggableModel.new(:name => "Bob Jones")
     end

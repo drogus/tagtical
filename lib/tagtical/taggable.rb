@@ -25,10 +25,10 @@ module Tagtical
       tag_types = Tagtical::Tag::Type.register(tag_types.uniq.compact, self)
 
       if taggable?
-        write_inheritable_attribute(:tag_types, (self.tag_types + tag_types).uniq)
+        self.tag_types = (self.tag_types + tag_types).uniq
       else
-        write_inheritable_attribute(:tag_types, tag_types)
-        class_inheritable_reader(:tag_types)
+        class_attribute(:tag_types)
+        self.tag_types = tag_types
 
         has_many :taggings, :as => :taggable, :dependent => :destroy, :include => :tag, :class_name => "Tagtical::Tagging"
         has_many :tags, :through => :taggings, :class_name => "Tagtical::Tag"
