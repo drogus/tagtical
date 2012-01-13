@@ -41,19 +41,3 @@ namespace 'rails2.3' do
     Rake::Task['spec'].invoke    
   end
 end
-
-begin
-  require 'jeweler'
-  Jeweler::Tasks.new do |gemspec|
-    gemspec.name = "tagtical"
-    gemspec.summary = "Tagtical is a tagging plugin for Rails that provides weighting, contexts, and inheritance for tags."
-    gemspec.description = "Tagtical allows you do create subclasses for Tag and add additional functionality in an STI fashion. For example. You could do Tag::Color.find_by_name('blue').to_rgb. It also supports storing weights or relevance on the taggings."
-    gemspec.email = "aryk@mixbook.com"
-    gemspec.homepage = "https://github.com/Mixbook/tagtical"
-    gemspec.authors = ["Aryk Grosz"]
-    gemspec.files =  FileList["[A-Z]*", "{generators,lib,spec,rails}/**/*"] - FileList["**/*.log"]
-  end
-  Jeweler::GemcutterTasks.new
-rescue LoadError
-  puts "Jeweler not available. Install it with: gem install jeweler"
-end
