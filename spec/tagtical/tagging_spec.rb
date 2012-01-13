@@ -49,14 +49,14 @@ describe Tagtical::Tagging do
     }.should change(@klass, :count).by(1)
   end
 
-  describe "#set_tag_target" do
+  describe "#tag=" do
     before do
       @tag = Tagtical::Tag.new(:value => "foo")
-      @tagging.set_tag_target(@tag)
+      @tagging.tag = @tag
     end
 
     it "should set relevance on tag" do
-      @tagging.tag.relevance.should==4.0
+      @tagging.tag.relevance.should == 4.0
     end
   end
 

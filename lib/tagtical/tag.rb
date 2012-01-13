@@ -1,7 +1,7 @@
 module Tagtical
   class Tag < ::ActiveRecord::Base
-
     attr_accessible :value
+    attr_accessor :tagger_id
 
     has_many :taggings, :dependent => :destroy, :class_name => 'Tagtical::Tagging'
 
@@ -118,17 +118,33 @@ module Tagtical
 
     ### INSTANCE METHODS:
 
+    def on_set_target(owner)
+      if owner
+        self.clone.tap do |target|
+          target.relevance = owner.relevance
+          target.tagger_id = owner.tagger_id
+        end
+      else
+        self
+      end
+    end
+
     def ==(object)
       super || (object.is_a?(self.class) && value == object.value)
     end
 
     # Relevance is transferred through "taggings" join.
     def relevance
-      (v = self[:relevance]) && v.to_f
+      v = has_attribute?(:relevance) ? self[:relevance] : @relevance
+      v && v.to_f
     end
 
     def relevance=(relevance)
-      self[:relevance] = relevance
+      if has_attribute?(:relevance)
+        self[:relevance] = relevance
+      else
+        @relevance = relevance
+      end
     end
 
       # Try to sort by the relevance if provided.

@@ -15,7 +15,7 @@ module Tagtical::Taggable
       def initialize_tagtical_core
         has_many :taggings, :as => :taggable, :dependent => :destroy, :include => :tag, :class_name => "Tagtical::Tagging"
         has_many :tags, :through => :taggings, :source => :tag, :class_name => "Tagtical::Tag",
-                 :select => "#{Tagtical::Tag.table_name}.*, #{Tagtical::Tagging.table_name}.relevance, #{Tagtical::Tagging.table_name}.tagger_id" # include the relevance on the tags
+                 :select => "#{Tagtical::Tag.table_name}.*, #{Tagtical::Tagging.table_name}.relevance as relevance, #{Tagtical::Tagging.table_name}.tagger_id as tagger_id" # include the relevance on the tags
 
         tag_types.each do |tag_type| # has_many :tags gets created here
 

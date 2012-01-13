@@ -1,6 +1,7 @@
 require "active_record"
 require "action_view"
 require "active_support/hash_with_indifferent_access"
+require "active_support/ordered_options"
 
 module Tagtical
 
@@ -21,6 +22,7 @@ end
 $LOAD_PATH.unshift(File.dirname(__FILE__))
 
 require "tagtical/compatibility/active_record_backports" if ActiveRecord::VERSION::MAJOR < 3
+require "tagtical/compatibility/ar_hacks"
 
 require "tagtical/taggable"
 require "tagtical/taggable/core"

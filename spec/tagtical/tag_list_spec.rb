@@ -118,7 +118,7 @@ describe Tagtical::TagList do
   describe "#to_s" do
     before do
       @tag_list = Tagtical::TagList.new("far", "awesome : 4", "radical : 3", "car, bar:10.3", :parse => false)
-      @taggable = TaggableModel.new("taggable")
+      @taggable = TaggableModel.new
       @taggable.set_tag_list "retro: 6, car:4, nature, test: 2.7 ", :cascade => true
       @taggable.save
       @taggable.reload

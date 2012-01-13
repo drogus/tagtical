@@ -1,4 +1,5 @@
 $LOAD_PATH << "." unless $LOAD_PATH.include?(".")
+require 'logger'
 
 begin
   require "rubygems"
@@ -168,7 +169,7 @@ module ActiveRecord
         execute_without_analyzer(sql, name)
       end
       # Always disable this in production
-      alias_method_chain :execute, :analyzer unless Rails.env.production?
+      alias_method_chain :execute, :analyzer if defined?(Rails) && !Rails.env.production?
 
     end
   end
