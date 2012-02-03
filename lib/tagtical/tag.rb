@@ -312,7 +312,11 @@ module Tagtical
 
       # Return the Tag subclass
       def klass
-        @klass ||= find_tag_class!
+        if @klass.is_a?(String)
+          @klass = @klass.constantize
+        else
+          @klass ||= find_tag_class!
+        end
       end
 
       def base?
